@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.template
+
+# Node.js dependencies
+node_modules/
+.next/
+out/
+build/
+
+# Go binaries and caches
+backend/backend
+backend/*.exe
+go.work
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# System files
+.DS_Store
+Thumbs.db

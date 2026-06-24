@@ -1,0 +1,18 @@
+[package]
+name = "covenant_contracts"
+version = "1.0.0"
+edition = "2021"
+authors = ["Covenant Team"]
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+odra = "0.8.0"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+overflow-checks = true
