@@ -19,7 +19,7 @@ Covenant is the trust layer for autonomous AI agents on Casper. It enables AI ag
 
 ## 2. Directory Structure
 
-
+```
 Covenant/
 ├── docs/                     # Architectural specs and system designs
 ├── backend/                  # Go-based API Gateway & Swarm Orchestration
@@ -27,7 +27,7 @@ Covenant/
 ├── frontend/                 # Next.js & Tailwind CSS UI Dashboard
 ├── .env.template             # Blueprint for system environment variables
 └── README.md                 # Project Overview
-
+```
 ---
 
 ## 3. Technology Stack
