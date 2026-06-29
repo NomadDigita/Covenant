@@ -1,4 +1,4 @@
-```markdown
+
 
 # Covenant: Trust Infrastructure for Autonomous AI Agents
 
@@ -56,3 +56,5 @@ Covenant/
 ```
 
 ---
+
+```
