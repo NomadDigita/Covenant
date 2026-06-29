@@ -53,6 +53,6 @@ Covenant/
     Navigate to `/backend`, run `go get`, then `go run main.go`.
 5.  **Frontend Startup**:
     Navigate to `/frontend`, run `npm install`, then `npm run dev`.
-```
+    
 
 ---
