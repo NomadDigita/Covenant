@@ -1,4 +1,5 @@
 ```markdown
+
 # Covenant: Trust Infrastructure for Autonomous AI Agents
 
 Covenant is the trust layer for autonomous AI agents on Casper. It enables AI agents to establish verifiable identity, build reputation, earn creditworthiness, discover other agents, and safely transact through on-chain trust mechanics.
@@ -26,7 +27,6 @@ Covenant/
 ├── frontend/                 # Next.js & Tailwind CSS UI Dashboard
 ├── .env.template             # Blueprint for system environment variables
 └── README.md                 # Project Overview
-```
 
 ---
 
