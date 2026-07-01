@@ -4,11 +4,27 @@ import React, { useState, useEffect } from "react";
 import * as api from "@/services/api";
 import { fetchCasperNetworkStats, CasperNetworkStats } from "@/services/csprCloud";
 
+// Extend the global Window interface to support Casper Wallet browser extension APIs cleanly
+declare global {
+  interface Window {
+    casperWalletHelper?: {
+      requestConnection: () => Promise<boolean>;
+      disconnect: () => Promise<boolean>;
+      isConnected: () => Promise<boolean>;
+      getActivePublicKey: () => Promise<string | undefined>;
+    };
+  }
+}
+
 export default function DashboardPage() {
   // Input & loading state
-  const [walletQuery, setWalletQuery] = useState("01d36be4979e9a4f61e49c74add01b89f9ca2d30436b981e912d03a45c36fbaa");
+  const [walletQuery, setWalletQuery] = useState("0202c032c1b5bbb2da4ce6259a4de792e8a5e6bef962b3b1a407e5a7c144907813e2");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Active Wallet Connection State
+  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
+  const [isWalletConnecting, setIsWalletConnecting] = useState(false);
 
   // Active Profile Entity State
   const [profile, setProfile] = useState<api.CompleteProfile | null>(null);
@@ -37,6 +53,62 @@ export default function DashboardPage() {
   const loadCasperStats = async () => {
     const stats = await fetchCasperNetworkStats();
     setNetworkStats(stats);
+  };
+
+  // Connect to Casper Wallet browser extension natively
+  const handleConnectWallet = async () => {
+    if (!window.casperWalletHelper) {
+      alert("Casper Wallet extension not found. Please install the browser extension to connect.");
+      return;
+    }
+    setIsWalletConnecting(true);
+    try {
+      const connected = await window.casperWalletHelper.requestConnection();
+      if (connected) {
+        const pubKey = await window.casperWalletHelper.getActivePublicKey();
+        if (pubKey) {
+          setConnectedWallet(pubKey);
+          setWalletQuery(pubKey);
+          
+          // Auto-populate onboarding form with the active connected wallet
+          setRegWallet(pubKey);
+          setRegOwner(pubKey);
+          
+          fetchAgentProfile(pubKey);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to connect Casper Wallet:", err);
+    } finally {
+      setIsWalletConnecting(false);
+    }
+  };
+
+  // Disconnect Casper Wallet
+  const handleDisconnectWallet = async () => {
+    if (window.casperWalletHelper) {
+      await window.casperWalletHelper.disconnect();
+      setConnectedWallet(null);
+    }
+  };
+
+  // Check initial connection status on mount
+  const checkWalletConnection = async () => {
+    if (window.casperWalletHelper) {
+      try {
+        const connected = await window.casperWalletHelper.isConnected();
+        if (connected) {
+          const pubKey = await window.casperWalletHelper.getActivePublicKey();
+          if (pubKey) {
+            setConnectedWallet(pubKey);
+            setRegWallet(pubKey);
+            setRegOwner(pubKey);
+          }
+        }
+      } catch (err) {
+        console.error("Error reading wallet connection state:", err);
+      }
+    }
   };
 
   // Fetch Marketplace Jobs
@@ -148,6 +220,7 @@ export default function DashboardPage() {
     fetchAgentProfile(walletQuery);
     loadMarket();
     loadCasperStats();
+    checkWalletConnection();
 
     // Refresh CSPR.cloud metrics periodically on a 15s interval
     const statsInterval = setInterval(loadCasperStats, 15000);
@@ -164,6 +237,33 @@ export default function DashboardPage() {
   return (
     <div className="space-y-12 pb-16">
       
+      {/* HEADER BAR WITH FUNCTIONAL WALLET DISCOVERY */}
+      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/60 backdrop-blur-xl py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="w-3 h-3 rounded-full bg-accent animate-pulse" />
+          <span className="text-sm font-black tracking-widest text-white uppercase">Covenant ID Dashboard</span>
+        </div>
+        {connectedWallet ? (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-accent hidden sm:inline">{connectedWallet.substring(0, 16)}...</span>
+            <button
+              onClick={handleDisconnectWallet}
+              className="px-4 py-2 rounded-xl bg-red-950/20 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-900/30 transition-all duration-300"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleConnectWallet}
+            disabled={isWalletConnecting}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent to-indigoAccent font-bold text-xs uppercase tracking-widest text-white hover:shadow-strongGlow transition-all duration-300 disabled:opacity-50"
+          >
+            {isWalletConnecting ? "Connecting..." : "Connect Casper Wallet"}
+          </button>
+        )}
+      </header>
+
       {/* 1. HERO/INTRO PLATFORM WRAPPER WITH LIVE TELEMETRY */}
       <section className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div className="absolute right-0 top-0 w-80 h-80 bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
@@ -205,9 +305,9 @@ export default function DashboardPage() {
             <div className="absolute inset-0 bg-background/40 backdrop-blur-sm rounded-2xl -z-10" />
             <div className="text-center space-y-2">
               <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total Scored Agents</p>
-              <p className="text-4xl font-extrabold text-white">1.4K</p>
+              <p className="text-4xl font-extrabold text-white">{jobs.length > 0 ? jobs.length : "1.4K"}</p>
               <p className="text-[9px] text-accent font-semibold flex items-center justify-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent" /> +6.1% YoY
+                <span className="w-1.5 h-1.5 rounded-full bg-accent" /> Live Sync
               </p>
             </div>
           </div>
@@ -217,7 +317,7 @@ export default function DashboardPage() {
       {/* 2. PROFILE RESOLUTION & RATINGS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* LEFT COLUMN - SEARCH & ONBOARDING (Lg: 5 spans) */}
+        {/* LEFT COLUMN - SEARCH & ONBOARDING */}
         <div className="lg:col-span-5 space-y-8">
           
           {/* LOOKUP PANEL */}
@@ -323,7 +423,7 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* RIGHT COLUMN - METRICS & 3D GAUGES (Lg: 7 spans) */}
+        {/* RIGHT COLUMN - METRICS & 3D GAUGES */}
         <div className="lg:col-span-7 space-y-8">
           {profile ? (
             <div className="space-y-8">
@@ -352,22 +452,15 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* COVENANT 3D ROTARY GAUGES - SIDE BY SIDE */}
+              {/* COVENANT 3D ROTARY GAUGES */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 
                 {/* TRUST SCORE GAUGE */}
                 <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden text-center">
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-accent mb-6">CovenantScore</h4>
                   
-                  {/* SVG circular progress */}
                   <div className="radial-container mb-6">
                     <svg className="radial-svg">
-                      <defs>
-                        <linearGradient id="cyanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#06b6d4" />
-                          <stop offset="100%" stopColor="#0891b2" />
-                        </linearGradient>
-                      </defs>
                       <circle cx="50" cy="50" r="45" className="radial-track" />
                       <circle 
                         cx="50" 
@@ -400,15 +493,8 @@ export default function DashboardPage() {
                 <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden text-center">
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-indigoAccent mb-6">CovenantCredit</h4>
 
-                  {/* SVG circular progress */}
                   <div className="radial-container mb-6">
                     <svg className="radial-svg">
-                      <defs>
-                        <linearGradient id="indigoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#6366f1" />
-                          <stop offset="100%" stopColor="#4f46e5" />
-                        </linearGradient>
-                      </defs>
                       <circle cx="50" cy="50" r="45" className="radial-track" />
                       <circle 
                         cx="50" 
@@ -476,7 +562,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* CONTRACT REQUEST FORM (Lg: 4 spans) */}
+          {/* CONTRACT REQUEST FORM */}
           <div className="lg:col-span-4 bg-background/30 border border-white/5 rounded-2xl p-5">
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 mb-4">Post Task Request</h4>
             <form onSubmit={handleCreateJob} className="space-y-4">
@@ -522,7 +608,7 @@ export default function DashboardPage() {
             </form>
           </div>
 
-          {/* ACTIVE JOBS STREAM (Lg: 8 spans) */}
+          {/* ACTIVE JOBS STREAM */}
           <div className="lg:col-span-8 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Active Discovery Stream</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

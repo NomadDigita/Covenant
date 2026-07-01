@@ -1,4 +1,5 @@
-const CSPR_CLOUD_API_KEY = "019ef507-5c43-788e-836c-a524b5f36fba";
+// Dynamically loads the API key from environment variables, or falls back to your active developer key
+const CSPR_CLOUD_API_KEY = process.env.NEXT_PUBLIC_CSPR_CLOUD_API_KEY || "019ef507-5c43-788e-836c-a524b5f36fba";
 const BASE_TESTNET_URL = "https://api.testnet.cspr.cloud";
 
 export interface CasperNetworkStats {
