@@ -5,6 +5,7 @@ import (
 
 	"backend/controllers"
 	"backend/database"
+	"backend/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,13 +13,16 @@ import (
 func main() {
 	log.Println("Starting Covenant Production API Gateway...")
 
-	// 1. Initialize Supabase Connection pool
+	// 1. Initialize Supabase Connection pool with Simple Protocol
 	database.InitDatabase()
 
-	// 2. Initialize Router
+	// 2. Launch the Asynchronous Swarm Agent Background Workers (Rep, Credit, Risk)
+	services.StartSwarmOrchestration()
+
+	// 3. Initialize Router
 	router := gin.Default()
 
-	// 3. Setup CORS Middleware
+	// 4. Setup CORS Middleware
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -32,7 +36,7 @@ func main() {
 		c.Next()
 	})
 
-	// 4. Global Health Check Endpoint
+	// 5. Global Health Check Endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":   "healthy",
@@ -40,7 +44,7 @@ func main() {
 		})
 	})
 
-	// 5. Consolidated Versioned API Routes (v1)
+	// 6. Consolidated Versioned API Routes (v1)
 	v1 := router.Group("/api/v1")
 	{
 		// --- CovenantID Identity Layer ---
@@ -62,7 +66,7 @@ func main() {
 		v1.GET("/audits/:agent_id", controllers.GetAuditLogsByAgent)
 	}
 
-	// 6. Launch Server on Port 8080
+	// 7. Launch Server on Port 8080
 	port := ":8080"
 	log.Printf("Covenant Production Gateway listening on http://localhost%s", port)
 	if err := router.Run(port); err != nil {

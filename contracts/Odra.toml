@@ -1,22 +1,22 @@
 [definition]
-name = "covenant_contracts"
+name = "covenant"
 version = "1.0.0"
 
 [[contracts]]
 name = "AgentRegistry"
-fqn = "covenant_contracts::AgentRegistry"
+fqn = "covenant::AgentRegistry"
 
 [[contracts]]
 name = "ReputationContract"
-fqn = "covenant_contracts::ReputationContract"
+fqn = "covenant::ReputationContract"
 
 [[contracts]]
 name = "CreditContract"
-fqn = "covenant_contracts::CreditContract"
+fqn = "covenant::CreditContract"
 
 [[contracts]]
 name = "PaymentContract"
-fqn = "covenant_contracts::PaymentContract"
+fqn = "covenant::PaymentContract"
 
 [backend]
 default = "casper"

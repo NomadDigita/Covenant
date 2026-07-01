@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import * as api from "@/services/api";
+import { fetchCasperNetworkStats, CasperNetworkStats } from "@/services/csprCloud";
 
 export default function DashboardPage() {
   // Input & loading state
@@ -11,6 +12,9 @@ export default function DashboardPage() {
 
   // Active Profile Entity State
   const [profile, setProfile] = useState<api.CompleteProfile | null>(null);
+
+  // Live CSPR.cloud Telemetry State
+  const [networkStats, setNetworkStats] = useState<CasperNetworkStats | null>(null);
 
   // New Agent Registration State
   const [regName, setRegName] = useState("");
@@ -28,6 +32,12 @@ export default function DashboardPage() {
 
   // Audit Logs Output
   const [auditReasoning, setAuditReasoning] = useState<string | null>(null);
+
+  // Fetch Casper Network Stats from CSPR.cloud
+  const loadCasperStats = async () => {
+    const stats = await fetchCasperNetworkStats();
+    setNetworkStats(stats);
+  };
 
   // Fetch Marketplace Jobs
   const loadMarket = async () => {
@@ -137,9 +147,14 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchAgentProfile(walletQuery);
     loadMarket();
+    loadCasperStats();
+
+    // Refresh CSPR.cloud metrics periodically on a 15s interval
+    const statsInterval = setInterval(loadCasperStats, 15000);
+    return () => clearInterval(statsInterval);
   }, []);
 
-  // Helper calculation for SVG Radial Gauge circumference (r=45, circumference ≈ 282.7)
+  // Helper calculation for SVG Radial Gauge circumference
   const calculateStrokeOffset = (score: number) => {
     const r = 45;
     const c = 2 * Math.PI * r;
@@ -149,9 +164,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-12 pb-16">
       
-      {/* 1. HERO/INTRO PLATFORM WRAPPER */}
+      {/* 1. HERO/INTRO PLATFORM WRAPPER WITH LIVE TELEMETRY */}
       <section className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-8">
-        {/* Subtle radial backdrop accent */}
         <div className="absolute right-0 top-0 w-80 h-80 bg-accent/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="max-w-2xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-xs font-bold text-accent tracking-widest uppercase">
@@ -168,6 +182,22 @@ export default function DashboardPage() {
             The decentralized trust architecture built on Casper. Every identity, reputation score, 
             and credit limit is audited in real-time, enabling seamless agentic machine-to-machine commerce.
           </p>
+
+          {/* LIVE CSPR.CLOUD CONSENSUS BLOCK */}
+          {networkStats && (
+            <div className="pt-4 flex flex-wrap items-center gap-4 text-xs font-mono text-gray-500">
+              <span className="flex items-center gap-1.5 text-accent font-semibold">
+                <span className="w-2 h-2 rounded-full bg-accent" />
+                CSPR.cloud Connected
+              </span>
+              <span>&bull;</span>
+              <span>Block: <strong className="text-gray-300">{networkStats.blockHeight}</strong></span>
+              <span>&bull;</span>
+              <span>Era: <strong className="text-gray-300">{networkStats.eraId}</strong></span>
+              <span>&bull;</span>
+              <span>State: <strong className="text-gray-300">{networkStats.stateRootHash}</strong></span>
+            </div>
+          )}
         </div>
         <div className="hidden md:block">
           {/* Subtle geometric 3D visual card */}
