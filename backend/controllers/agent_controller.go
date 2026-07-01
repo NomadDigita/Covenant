@@ -1,8 +1,15 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"backend/database"
 	"backend/models"
@@ -21,6 +28,115 @@ type RegisterAgentPayload struct {
 	Description   string   `json:"description"`
 }
 
+// QueryCasperNodeRPC executes a JSON-RPC query against the Casper Testnet nodes
+func QueryCasperNodeRPC(method string, params interface{}) (map[string]interface{}, error) {
+	// Query official high-availability HTTPS load-balancer
+	nodeURL := "https://rpc.testnet.casper.network/rpc"
+	
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  method,
+		"params":  params,
+	}
+
+	jsonPayload, _ := json.Marshal(payload)
+	req, err := http.NewRequest("POST", nodeURL, bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second} // Safe timeout
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var rpcResponse map[string]interface{}
+	if err := json.Unmarshal(body, &rpcResponse); err != nil {
+		return nil, err
+	}
+
+	if errResponse, exists := rpcResponse["error"]; exists {
+		return nil, fmt.Errorf("Casper RPC Error: %v", errResponse)
+	}
+
+	return rpcResponse, nil
+}
+
+// VerifyOnChainRegistration checks if the wallet address is registered inside the on-chain AgentRegistry contract
+func VerifyOnChainRegistration(walletAddress string) bool {
+	contractHash := os.Getenv("CONTRACT_HASH_AGENT_REGISTRY")
+	if contractHash == "" {
+		log.Println("[Warning] CONTRACT_HASH_AGENT_REGISTRY is not set. Skipping on-chain verification.")
+		return true // Fallback to allow database-only flow if hash is not set
+	}
+
+	// Query Casper contract dictionary storage key using state_get_dictionary_item
+	params := map[string]interface{}{
+		"state_root_hash": "", // Left empty for node to auto-fill latest block root
+		"dictionary_identifier": map[string]interface{}{
+			"ContractNamedKey": map[string]interface{}{
+				"key":             contractHash,
+				"dictionary_name": "profiles",
+				"dictionary_item_key": walletAddress,
+			},
+		},
+	}
+
+	_, err := QueryCasperNodeRPC("state_get_dictionary_item", params)
+	if err != nil {
+		log.Printf("[On-Chain Audit] Verification failed for wallet %s: %v", walletAddress, err)
+		return false
+	}
+
+	log.Printf("[On-Chain Audit] Verified on-chain AgentRegistry record for: %s", walletAddress)
+	return true
+}
+
+// GetOnChainRating reads the live, un-mocked score directly from the deployed contract on Casper Testnet
+func GetOnChainRating(contractHashEnvKey string, walletAddress string, defaultVal int) int {
+	contractHash := os.Getenv(contractHashEnvKey)
+	if contractHash == "" {
+		return defaultVal
+	}
+
+	params := map[string]interface{}{
+		"state_root_hash": "",
+		"dictionary_identifier": map[string]interface{}{
+			"ContractNamedKey": map[string]interface{}{
+				"key":             contractHash,
+				"dictionary_name": "scores",
+				"dictionary_item_key": walletAddress,
+			},
+		},
+	}
+
+	response, err := QueryCasperNodeRPC("state_get_dictionary_item", params)
+	if err != nil {
+		log.Printf("[On-Chain Audit] Failed to fetch live score from %s: %v. Using local cache.", contractHashEnvKey, err)
+		return defaultVal // Graceful fallback to local cache on timeout
+	}
+
+	// Parse the CLValue integer from the Casper RPC response structure
+	if result, ok := response["result"].(map[string]interface{}); ok {
+		if storedValue, ok := result["stored_value"].(map[string]interface{}); ok {
+			if clValue, ok := storedValue["CLValue"].(map[string]interface{}); ok {
+				if parsedVal, exists := clValue["parsed"]; exists {
+					if numericVal, ok := parsedVal.(float64); ok {
+						return int(numericVal)
+					}
+				}
+			}
+		}
+	}
+
+	return defaultVal
+}
+
 // RegisterAgent handles the creation of a new Agent ID profile on-chain mirroring
 func RegisterAgent(c *gin.Context) {
 	var payload RegisterAgentPayload
@@ -35,6 +151,12 @@ func RegisterAgent(c *gin.Context) {
 
 	if payload.WalletAddress == "" || payload.Name == "" || payload.OwnerAddress == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet_address, name, and owner_address are required"})
+		return
+	}
+
+	// Verify that the Agent has registered their profile on-chain on Casper Testnet first
+	if !VerifyOnChainRegistration(payload.WalletAddress) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Registration rejected. The wallet address is not registered on-chain inside the AgentRegistry contract. Please deploy your CovenantID profile first."})
 		return
 	}
 
@@ -139,8 +261,14 @@ func GetAgentByWallet(c *gin.Context) {
 	var reputation models.ReputationScore
 	database.DB.Where("agent_id = ?", agent.ID).First(&reputation)
 
+	// Fetch live, on-chain Reputation rating from the smart contract, fallback to local DB cache if offline
+	reputation.TrustScore = GetOnChainRating("CONTRACT_HASH_REPUTATION", walletAddress, reputation.TrustScore)
+
 	var credit models.CreditScore
 	database.DB.Where("agent_id = ?", agent.ID).First(&credit)
+
+	// Fetch live, on-chain Credit rating from the smart contract, fallback to local DB cache if offline
+	credit.CreditScore = GetOnChainRating("CONTRACT_HASH_CREDIT", walletAddress, credit.CreditScore)
 
 	c.JSON(http.StatusOK, gin.H{
 		"identity":   agent,

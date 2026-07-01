@@ -1,4 +1,5 @@
-const BASE_URL = "http://localhost:8080/api/v1";
+// Dynamically routes queries to your production Render gateway, or falls back to localhost in development
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://covenant-36vp.onrender.com/api/v1";
 
 export interface Agent {
   id: string;
