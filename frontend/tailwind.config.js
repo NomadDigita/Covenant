@@ -8,15 +8,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#030712", // Ultra-dark gray background
-        card: "#0b0f19",       // Slate gray for cards
-        border: "#1f2937",     // Cool gray boundaries
-        accent: "#06b6d4",     // Electric Cyan (Covenant primary)
-        indigoAccent: "#6366f1" // Deep Cobalt Violet (Agent swarm highlight)
+        background: "#020205", // Pure Pitch Black (cyberBlack)
+        card: "#05050c",       // Dark Tactical Terminal (cyberCard)
+        border: "#111827",     // Deep Slate Border (cyberBorder)
+        accent: "#39ff14",     // Electric Cyber Green (neonGreen)
+        indigoAccent: "#00f0ff" // Electric Cyber Cyan (neonCyan)
       },
       boxShadow: {
-        glow: "0 0 15px rgba(6, 182, 212, 0.15)",
-        strongGlow: "0 0 25px rgba(6, 182, 212, 0.35)",
+        glow: "0 0 15px rgba(57, 255, 20, 0.15)",
+        strongGlow: "0 0 25px rgba(57, 255, 20, 0.35)",
+        cyanGlow: "0 0 15px rgba(0, 240, 255, 0.15)",
+        strongCyanGlow: "0 0 25px rgba(0, 240, 255, 0.35)",
+      },
+      fontFamily: {
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       }
     },
   },
