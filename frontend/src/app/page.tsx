@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from "react";
 import * as api from "@/services/api";
 import { fetchCasperNetworkStats, CasperNetworkStats } from "@/services/csprCloud";
-import MatrixOverlay from "@/components/MatrixOverlay";
 import TerminalHUD from "@/components/TerminalHUD";
 import { CovenantLogo } from "@/components/CovenantLogo";
 
-// Extend the global Window interface to support both modern and legacy Casper Wallet extension providers
+// Extended global window interface for dual-provider Casper Wallet discovery
 declare global {
   interface Window {
     CasperWalletProvider?: any;
@@ -26,7 +25,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Active Wallet Connection State
+  // Casper Wallet Connection State
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
   const [isWalletConnecting, setIsWalletConnecting] = useState(false);
 
@@ -68,7 +67,7 @@ export default function DashboardPage() {
     setNetworkStats(stats);
   };
 
-  // Helper to retrieve the active Casper Wallet provider (auto-detects modern v2.x and legacy v1.x)
+  // Helper to retrieve the active Casper Wallet provider
   const getCasperProvider = () => {
     if (typeof window === "undefined") return null;
     if (window.CasperWalletProvider) {
@@ -89,18 +88,14 @@ export default function DashboardPage() {
     }
     setIsWalletConnecting(true);
     try {
-      // Connect to the provider
       const connected = await provider.requestConnection();
       if (connected) {
         const pubKey = await provider.getActivePublicKey();
         if (pubKey) {
           setConnectedWallet(pubKey);
           setWalletQuery(pubKey);
-          
-          // Auto-populate onboarding form with the active connected wallet
           setRegWallet(pubKey);
           setRegOwner(pubKey);
-          
           addTerminalLog(`[SYSTEM_CONNECT] Wallet authorized successfully. Address: ${pubKey}`);
           fetchAgentProfile(pubKey);
         }
@@ -143,7 +138,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Helper to push logs to the monospace Terminal HUD console safely
+  // Helper to push logs to the monospace Terminal HUD console
   const addTerminalLog = (msg: string) => {
     setTerminalLogs((prev) => [...prev, msg]);
   };
@@ -281,7 +276,6 @@ export default function DashboardPage() {
     setTransferSuccess(null);
     addTerminalLog(`[CovenantPay_TRANSFER] Executing transaction of ${transferAmount} CSPR to: ${transferRecipient.substring(0, 16)}...`);
     try {
-      // Logic targets your backend transfer logging endpoint
       setTransferSuccess(`Micropayment of ${transferAmount} CSPR transferred successfully on-chain.`);
       addTerminalLog(`[CovenantPay_SUCCESS] Broadcast transfer successfully. Volume limits recalculated.`);
       if (profile) fetchAgentProfile(profile.identity.wallet_address);
@@ -312,9 +306,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 pb-32 text-accent bg-[#020205] min-h-screen">
       
-      {/* NATIVE CRT SCANLINES OVERLAY */}
-      <MatrixOverlay />
-
       {/* HEADER BAR WITH RESPONSIVE DUAL-PROVIDER WALLET SYSTEM */}
       <header className="sticky top-0 z-50 w-full border-b border-accent/20 bg-[#020205]/80 backdrop-blur-xl py-4 px-4 sm:px-8 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
         <div className="flex items-center gap-3">
@@ -344,12 +335,12 @@ export default function DashboardPage() {
 
       <div className="px-4 sm:px-8 space-y-8">
         
-        {/* 1. HERO CONSOLE WITH LIVE TELEMETRY */}
+        {/* 1. HERO CONSOLE WITH LIVE TELEMETRY (Styled exactly like HACKNITE headers) */}
         <section className="bg-[#05050c] border border-accent/25 rounded p-6 sm:p-10 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-glow">
           <div className="absolute right-0 top-0 w-80 h-80 bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
           <div className="max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-accent/10 border border-accent/20 text-[10px] font-mono font-bold text-accent tracking-widest uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#ff7a00]/10 border border-[#ff7a00]/30 text-[10px] font-mono font-bold text-[#ff7a00] tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00] animate-ping" />
               SYSTEM_HEARTBEAT: ACTIVE
             </div>
             <h1 className="text-2xl sm:text-4xl font-mono font-black tracking-tight text-white leading-tight">
@@ -392,7 +383,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* 2. TACTICAL HUD TAB MANAGER BAR */}
+        {/* 2. TACTICAL HUD TAB MANAGER BAR (Structured exactly like HACKNITE navigations) */}
         <nav className="flex flex-wrap gap-2 border-b border-accent/20 pb-1 font-mono text-xs font-bold">
           <button
             onClick={() => setActiveTab("identity")}
@@ -436,7 +427,7 @@ export default function DashboardPage() {
           </button>
         </nav>
 
-        {/* 3. TACTICAL PANEL ROUTING CONTAINER */}
+        {/* 3. TACTICAL PANEL ROUTING CONTAINER WITH HACKNITE-STYLE CORNER BRACKET CARDS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* TAB 1: IDENTITY & REGISTRY LAYERS */}
@@ -444,10 +435,10 @@ export default function DashboardPage() {
             <React.Fragment>
               <div className="lg:col-span-5 space-y-6">
                 
-                {/* RESOLVER PANEL */}
-                <div className="glass-panel rounded p-6">
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent mb-4 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                {/* RESOLVER PANEL - CORNER BRACKETS */}
+                <div className="cyber-card rounded p-6" style={{ "--border-color": "var(--color-cyan)" } as React.CSSProperties}>
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-cyberCyan mb-4 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyberCyan" />
                     RESOLVE_AGENT_PROFILE
                   </h3>
                   <div className="space-y-3 font-mono">
@@ -472,8 +463,8 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* ONBOARDING FORM */}
-                <div className="glass-panel rounded p-6">
+                {/* ONBOARDING FORM - ORANGE HACKNITE BRACKETS */}
+                <div className="cyber-card rounded p-6">
                   <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-accent mb-4">ONBOARD_COVENANT_ID</h3>
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 font-mono text-xs">
@@ -553,7 +544,7 @@ export default function DashboardPage() {
                   <div className="space-y-6">
                     
                     {/* ACTIVE PROFILE DATA PANEL */}
-                    <div className="glass-panel rounded p-6 relative overflow-hidden shadow-glow">
+                    <div className="cyber-card rounded p-6 relative overflow-hidden shadow-glow">
                       <div className="absolute top-0 right-0 w-48 h-48 bg-accent/5 rounded-full blur-[50px] pointer-events-none" />
                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-accent/15 pb-4 mb-4">
                         <div>
@@ -578,8 +569,8 @@ export default function DashboardPage() {
 
                     {/* ROTARY GAUGES */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="glass-panel rounded p-6 flex flex-col items-center justify-center relative overflow-hidden text-center shadow-glow">
-                        <h4 className="text-[9px] font-mono font-bold uppercase tracking-widest text-accent mb-6">CovenantScore</h4>
+                      <div className="cyber-card rounded p-6 flex flex-col items-center justify-center relative overflow-hidden text-center shadow-glow" style={{ "--border-color": "var(--color-green)" } as React.CSSProperties}>
+                        <h4 className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#39ff14] mb-6">CovenantScore</h4>
                         <div className="radial-container mb-6">
                           <svg className="radial-svg">
                             <circle cx="50" cy="50" r="45" className="radial-track" />
@@ -609,8 +600,8 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="glass-panel rounded p-6 flex flex-col items-center justify-center relative overflow-hidden text-center shadow-glow">
-                        <h4 className="text-[9px] font-mono font-bold uppercase tracking-widest text-indigoAccent mb-6">CovenantCredit</h4>
+                      <div className="cyber-card rounded p-6 flex flex-col items-center justify-center relative overflow-hidden text-center shadow-glow" style={{ "--border-color": "var(--color-cyan)" } as React.CSSProperties}>
+                        <h4 className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#00f0ff] mb-6">CovenantCredit</h4>
                         <div className="radial-container mb-6">
                           <svg className="radial-svg">
                             <circle cx="50" cy="50" r="45" className="radial-track" />
@@ -643,7 +634,7 @@ export default function DashboardPage() {
 
                   </div>
                 ) : (
-                  <div className="glass-panel rounded p-12 text-center text-gray-600 shadow-glow">
+                  <div className="cyber-card rounded p-12 text-center text-gray-600 shadow-glow">
                     <p className="text-xs font-mono">Please select or register a valid CovenantID profile to display current on-chain rating telemetry.</p>
                   </div>
                 )}
@@ -704,7 +695,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {jobs.length > 0 ? (
                     jobs.map((job) => (
-                      <div key={job.id} className="bg-[#05050c] border border-accent/20 rounded p-5 flex flex-col justify-between hover:border-accent/40 hover:shadow-glow transition-all duration-200">
+                      <div key={job.id} className="cyber-card rounded p-5 flex flex-col justify-between hover:border-accent/40 hover:shadow-glow transition-all duration-200">
                         <div>
                           <div className="flex justify-between items-start mb-3">
                             <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded ${
@@ -818,7 +809,7 @@ export default function DashboardPage() {
           {activeTab === "audits" && (
             <div className="lg:col-span-12 space-y-6">
               {auditReasoning ? (
-                <div className="bg-[#050811] border border-accent/25 rounded p-6 relative overflow-hidden shadow-glow">
+                <div className="cyber-card rounded p-6 relative overflow-hidden shadow-glow" style={{ "--border-color": "var(--color-violet)" } as React.CSSProperties}>
                   <div className="absolute top-0 right-0 w-48 h-48 bg-accent/5 rounded-full blur-[60px] pointer-events-none" />
                   <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
                     <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-accent flex items-center gap-2">
@@ -832,7 +823,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <div className="glass-panel border-accent/25 rounded p-12 text-center text-gray-600 shadow-glow font-mono">
+                <div className="cyber-card rounded p-12 text-center text-gray-600 shadow-glow font-mono">
                   <p className="text-sm">Please select an active agent profile to generate AI audit description logs.</p>
                 </div>
               )}
