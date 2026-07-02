@@ -3,62 +3,59 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #020613;
-  --color-glass: rgba(10, 17, 34, 0.55);
-  --color-border: rgba(255, 255, 255, 0.07);
-  --color-accent: #06b6d4;
-  --color-indigo: #6366f1;
+  --color-bg: #020205;
+  --color-card: #05050c;
+  --color-border: rgba(57, 255, 20, 0.15);
+  --color-accent: #39ff14;
+  --color-cyan: #00f0ff;
 }
 
 body {
   background-color: var(--color-bg);
+  /* Tactical Cyber-Grid Background Pattern */
   background-image: 
-    radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.08) 0px, transparent 50%);
+    linear-gradient(rgba(57, 255, 20, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 255, 20, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
   background-attachment: fixed;
-  color: #f3f4f6;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  color: #39ff14;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   overflow-x: hidden;
 }
 
-/* 3D Liquid-Glass Panel Styling */
+/* High-Fidelity Cyberpunk Panel Card */
 .glass-panel {
-  background: var(--color-glass);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background-color: var(--color-card);
   border: 1px solid var(--color-border);
-  box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.08);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.05);
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .glass-panel:hover {
-  border-color: rgba(6, 182, 212, 0.25);
-  box-shadow: 
-    0 10px 40px rgba(6, 182, 212, 0.08),
-    inset 0 1px 2px rgba(255, 255, 255, 0.12);
-  transform: translateY(-2px);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 25px rgba(57, 255, 20, 0.2);
 }
 
-/* High-Intensity Liquid Neon Glows */
+/* Glowing Neon Elements */
+.neon-glow-green {
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.25);
+}
+
 .neon-glow-cyan {
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
 }
 
-.neon-glow-indigo {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
-}
-
-/* Locked Header Layout Overlay */
-.sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(2, 6, 19, 0.65);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+/* Phosphor CRT Scanline Overlay Animation */
+.crt-scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.15) 50%
+  );
+  background-size: 100% 4px;
 }
 
 /* Circular Metric Gauge Configurations */
@@ -79,36 +76,34 @@ body {
 
 .radial-track {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.04);
-  stroke-width: 10;
+  stroke: rgba(255, 255, 255, 0.02);
+  stroke-width: 8;
 }
 
 .radial-progress-cyan {
   fill: none;
-  stroke: url(#cyanGradient);
-  stroke-width: 10;
-  stroke-linecap: round;
+  stroke: var(--color-accent);
+  stroke-width: 8;
   transition: stroke-dashoffset 0.6s ease-in-out;
 }
 
 .radial-progress-indigo {
   fill: none;
-  stroke: url(#indigoGradient);
-  stroke-width: 10;
-  stroke-linecap: round;
+  stroke: var(--color-cyan);
+  stroke-width: 8;
   transition: stroke-dashoffset 0.6s ease-in-out;
 }
 
-/* Custom Web3 Scrollbar */
+/* Custom Web3 Monospace Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  background: rgba(57, 255, 20, 0.1);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent);
