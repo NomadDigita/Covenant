@@ -5,6 +5,8 @@ import (
 
 	"backend/controllers"
 	"backend/database"
+	"backend/mcp"
+	"backend/middleware"
 	"backend/services"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +28,7 @@ func main() {
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-402-Payment-Proof")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
 		if c.Request.Method == "OPTIONS" {
@@ -44,7 +46,10 @@ func main() {
 		})
 	})
 
-	// 6. Consolidated Versioned API Routes (v1)
+	// 6. Setup Casper Model Context Protocol (MCP) Server Endpoint
+	router.POST("/mcp", mcp.HandleMCPEndpoint)
+
+	// 7. Consolidated Versioned API Routes (v1)
 	v1 := router.Group("/api/v1")
 	{
 		// --- CovenantID Identity Layer ---
@@ -62,11 +67,12 @@ func main() {
 		v1.GET("/payments/history", controllers.GetPaymentHistory)
 
 		// --- CovenantAudit (AI Explanations & logs) ---
-		v1.POST("/audits/explain", controllers.RequestAuditExplanation)
+		// Enforce HTTP-native x402 pay-per-request verification on the premium audit explanation generator endpoint
+		v1.POST("/audits/explain", middleware.X402PayPerRequest(), controllers.RequestAuditExplanation)
 		v1.GET("/audits/:agent_id", controllers.GetAuditLogsByAgent)
 	}
 
-	// 7. Launch Server on Port 8080
+	// 8. Launch Server on Port 8080
 	port := ":8080"
 	log.Printf("Covenant Production Gateway listening on http://localhost%s", port)
 	if err := router.Run(port); err != nil {
