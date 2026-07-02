@@ -1,6 +1,5 @@
 import React from "react";
-// @ts-ignore: allow global CSS import in layout
-import "./globals.css";
+import "@/app/globals.css";
 import MatrixOverlay from "@/components/MatrixOverlay";
 
 export const metadata = {
