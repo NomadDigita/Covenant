@@ -1,4 +1,13 @@
 {
+  "name": "covenant-casper-contracts",
+  "version": "1.0.0",
+  "description": "Deployment and interaction tooling for Covenant's Casper Testnet smart contracts (AgentRegistry, ReputationContract, PaymentContract, CreditContract).",
+  "main": "deploy.js",
+  "scripts": {
+    "deploy": "node deploy.js",
+    "interact": "node interact.js"
+  },
+  "license": "UNLICENSED",
   "dependencies": {
     "casper-js-sdk": "^5.0.12"
   }
