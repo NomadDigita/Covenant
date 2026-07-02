@@ -1,0 +1,29 @@
+[package]
+name = "covenant"
+version = "1.0.0"
+edition = "2021"
+authors = ["Covenant Team"]
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "covenant_build_contract"
+path = "_build_contract.rs"
+
+[dependencies]
+odra = "0.8.0"
+zeroize = "=1.4.3"
+zeroize_derive = "=1.4.2"
+quote = "=1.0.35"
+proc-macro2 = "=1.0.78"
+zerocopy = "=0.7.35"
+serde = { version = "=1.0.197", default-features = false, features = ["derive", "alloc"] }
+serde_derive = { version = "=1.0.197", default-features = false }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+overflow-checks = true

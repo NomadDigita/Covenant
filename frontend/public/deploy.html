@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Covenant On-Chain Casper Testnet Deployer</title>
+  <!-- Load official Casper SDK via unpkg CDN -->
+  <script src="https://unpkg.com/casper-js-sdk@2.9.1/dist/lib.js"></script>
+  <style>
+    body {
+      background-color: #030712;
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 40px;
+      margin: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: rgba(10, 17, 34, 0.55);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    h2 {
+      margin-top: 0;
+      color: #fff;
+      font-weight: 800;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 25px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+    input[type="file"] {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .btn {
+      width: 100%;
+      border: none;
+      color: white;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #06b6d4, #6366f1);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e5e7eb;
+      margin-bottom: 15px;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .alert {
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .alert-success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    .alert-danger {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    .log-hash {
+      font-family: monospace;
+      word-break: break-all;
+      background: #000;
+      padding: 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Covenant Testnet Deployer</h2>
+    <p style="font-size: 12px; color: #6b7280; margin-bottom: 25px;">
+      Authenticates and signs the transaction securely using your official Casper Wallet browser extension. No private key uploads required.
+    </p>
+
+    <!-- STEP 1: CONNECT WALLET -->
+    <button type="button" class="btn btn-secondary" id="connectBtn">Connect Casper Wallet</button>
+    <div id="walletStatus" style="font-size: 11px; font-weight: bold; color: #06b6d4; margin-bottom: 20px;"></div>
+
+    <form id="deployForm">
+      <!-- STEP 2: SELECT WASM -->
+      <div class="form-group">
+        <label>Select Compiled covenant_contracts.wasm</label>
+        <input type="file" id="wasmFile" accept=".wasm" required disabled>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="deployBtn" disabled>Sign & Deploy Contract</button>
+    </form>
+
+    <div id="statusOutput"></div>
+  </div>
+
+  <script>
+    const connectBtn = document.getElementById("connectBtn");
+    const walletStatus = document.getElementById("walletStatus");
+    const deployForm = document.getElementById("deployForm");
+    const wasmFileInput = document.getElementById("wasmFile");
+    const deployBtn = document.getElementById("deployBtn");
+    const statusOutput = document.getElementById("statusOutput");
+
+    let activePublicKeyHex = "";
+    let walletProvider = null;
+    let wasmBytes = null; // Stored pre-loaded bytes
+
+    // Pre-load WASM file on input change to make the click event synchronous
+    wasmFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const wasmBuffer = await file.arrayBuffer();
+        wasmBytes = new Uint8Array(wasmBuffer);
+        console.log("WASM bytes pre-loaded in browser cache successfully.");
+      } catch (err) {
+        console.error("Failed to pre-load WASM bytes:", err.message);
+      }
+    });
+
+    // Initialize provider check (Checks both CasperWalletProvider and fallback casperWalletHelper)
+    function checkWalletProvider() {
+      if (typeof window.CasperWalletProvider !== "undefined") {
+        walletProvider = window.CasperWalletProvider();
+        return true;
+      } else if (typeof window.casperWalletHelper !== "undefined") {
+        walletProvider = window.casperWalletHelper;
+        return true;
+      }
+      return false;
+    }
+
+    // Connect to Casper Wallet Extension
+    connectBtn.addEventListener("click", async () => {
+      statusOutput.innerHTML = "";
+      
+      if (!checkWalletProvider()) {
+        statusOutput.innerHTML = `
+          <div class="alert alert-danger">
+            <strong>❌ Casper Wallet Extension Not Detected:</strong><br>
+            Please open the extension, ensure it is unlocked, and reload this page.
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const connected = await walletProvider.requestConnection();
+        if (connected) {
+          activePublicKeyHex = await walletProvider.getActivePublicKey();
+          walletStatus.innerText = `CONNECTED WALLET: ${activePublicKeyHex}`;
+          
+          wasmFileInput.disabled = false;
+          deployBtn.disabled = false;
+          connectBtn.innerText = "Wallet Connected ✓";
+          console.log("Wallet connection established successfully.");
+        } else {
+          statusOutput.innerHTML = `
+            <div class="alert alert-danger">
+              Connection request was declined by the user in the extension.
+            </div>
+          `;
+        }
+      } catch (err) {
+        statusOutput.innerHTML = `
+          <div class="alert alert-danger">
+            <strong>❌ Connection Failed:</strong><br>
+            ${err.message}
+          </div>
+        `;
+      }
+    });
+
+    // Handle Safe Browser-Signed Deployment
+    deployForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusOutput.innerHTML = "";
+      deployBtn.disabled = true;
+      deployBtn.innerText = "Awaiting Wallet Signature...";
+
+      if (!wasmBytes) {
+        statusOutput.innerHTML = `<div class="alert alert-danger">Please re-select the WASM file to complete loading.</div>`;
+        deployBtn.disabled = false;
+        deployBtn.innerText = "Sign & Deploy Contract";
+        return;
+      }
+
+      try {
+        let SDK = window.CasperSDK || window;
+        const { DeployUtil, CLPublicKey, CasperServiceByJsonRPC, RuntimeArgs } = SDK;
+
+        if (!DeployUtil || !CLPublicKey || !CasperServiceByJsonRPC) {
+          throw new Error("Casper JS SDK failed to load from CDN. Ensure you have an active internet connection.");
+        }
+
+        const publicKey = CLPublicKey.fromHex(activePublicKeyHex);
+        const NODE_URL = "https://testnet-api.caspernode.io/rpc";
+        const rpcClient = new CasperServiceByJsonRPC(NODE_URL);
+
+        const deployParams = new DeployUtil.DeployParams(
+          publicKey,
+          "casper-test",
+          1,
+          1800000
+        );
+
+        const session = DeployUtil.ExecutableDeployItem.newModuleBytes(
+          wasmBytes,
+          RuntimeArgs.fromMap({})
+        );
+
+        const payment = DeployUtil.standardPayment(50000000000);
+        const deploy = DeployUtil.makeDeploy(deployParams, session, payment);
+        const deployJson = DeployUtil.deployToJson(deploy);
+
+        // Immediate click-handler tick execution: triggers the wallet popup instantly
+        const signedResponse = await walletProvider.sign(
+          deployJson,
+          activePublicKeyHex
+        );
+
+        if (signedResponse.cancelled) {
+          throw new Error("Transaction signing was cancelled by the user.");
+        }
+
+        const signedDeploy = DeployUtil.deployFromJson(signedResponse.deploy || signedResponse).unwrap();
+
+        console.log("Broadcasting signed deploy on-chain...");
+        const response = await rpcClient.deploy(signedDeploy);
+        const deployHash = response.deploy_hash;
+
+        statusOutput.innerHTML = `
+          <div class="alert alert-success">
+            <strong>🚀 Deployment successful!</strong><br>
+            Covenant Smart Contracts have been broadcasted live to the Casper Testnet.<br>
+            <span class="log-hash">Deploy Hash: ${deployHash}</span><br><br>
+            <a href="https://testnet.cspr.live/deploy/${deployHash}" target="_blank" style="color: #34d399; font-weight: bold;">
+              Track consensus verification on Casper Explorer &rarr;
+            </a>
+          </div>
+        `;
+      } catch (err) {
+        statusOutput.innerHTML = `
+          <div class="alert alert-danger">
+            <strong>❌ Deployment Failed:</strong><br>
+            ${err.message}
+          </div>
+        `;
+      } finally {
+        deployBtn.disabled = false;
+        deployBtn.innerText = "Sign & Deploy Contract";
+      }
+    });
+  </script>
+</body>
+</html>

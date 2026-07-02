@@ -1,0 +1,25 @@
+[definition]
+name = "covenant"
+version = "1.0.0"
+
+[[contracts]]
+name = "AgentRegistry"
+fqn = "covenant::AgentRegistry"
+
+[[contracts]]
+name = "ReputationContract"
+fqn = "covenant::ReputationContract"
+
+[[contracts]]
+name = "CreditContract"
+fqn = "covenant::CreditContract"
+
+[[contracts]]
+name = "PaymentContract"
+fqn = "covenant::PaymentContract"
+
+[backend]
+default = "casper"
+
+[backend.casper]
+odra-casper-backend = "0.8.0"
