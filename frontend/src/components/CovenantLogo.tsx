@@ -1,6 +1,7 @@
 import React from "react";
 
-export default function CovenantLogo({ className = "w-8 h-8" }) {
+// Named Export: Satisfies { CovenantLogo } imports
+export function CovenantLogo({ className = "w-8 h-8" }) {
   return (
     <svg className={`${className} text-accent animate-pulse`} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <polygon points="50,5 95,30 95,80 50,95 5,80 5,30" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
@@ -10,3 +11,6 @@ export default function CovenantLogo({ className = "w-8 h-8" }) {
     </svg>
   );
 }
+
+// Default Export: Satisfies default fallback imports
+export default CovenantLogo;
