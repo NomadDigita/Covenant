@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 import * as api from "@/services/api";
 import { fetchCasperNetworkStats, CasperNetworkStats } from "@/services/csprCloud";
+import MatrixOverlay from "@/components/MatrixOverlay";
 import TerminalHUD from "@/components/TerminalHUD";
 import { CovenantLogo } from "@/components/CovenantLogo";
 
-// Extended global window interface for dual-provider Casper Wallet discovery
+// Extend the global Window interface to support both modern and legacy Casper Wallet extension providers
 declare global {
   interface Window {
     CasperWalletProvider?: any;
@@ -25,7 +26,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Casper Wallet Connection State
+  // Active Wallet Connection State
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
   const [isWalletConnecting, setIsWalletConnecting] = useState(false);
 
@@ -67,7 +68,7 @@ export default function DashboardPage() {
     setNetworkStats(stats);
   };
 
-  // Helper to retrieve the active Casper Wallet provider
+  // Helper to retrieve the active Casper Wallet provider (auto-detects modern v2.x and legacy v1.x)
   const getCasperProvider = () => {
     if (typeof window === "undefined") return null;
     if (window.CasperWalletProvider) {
@@ -88,14 +89,18 @@ export default function DashboardPage() {
     }
     setIsWalletConnecting(true);
     try {
+      // Connect to the provider
       const connected = await provider.requestConnection();
       if (connected) {
         const pubKey = await provider.getActivePublicKey();
         if (pubKey) {
           setConnectedWallet(pubKey);
           setWalletQuery(pubKey);
+          
+          // Auto-populate onboarding form with the active connected wallet
           setRegWallet(pubKey);
           setRegOwner(pubKey);
+          
           addTerminalLog(`[SYSTEM_CONNECT] Wallet authorized successfully. Address: ${pubKey}`);
           fetchAgentProfile(pubKey);
         }
@@ -138,7 +143,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Helper to push logs to the monospace Terminal HUD console
+  // Helper to push logs to the monospace Terminal HUD console safely
   const addTerminalLog = (msg: string) => {
     setTerminalLogs((prev) => [...prev, msg]);
   };
@@ -297,9 +302,19 @@ export default function DashboardPage() {
     return () => clearInterval(statsInterval);
   }, []);
 
+  // Helper calculation for SVG Radial Gauge circumference
+  const calculateStrokeOffset = (score: number) => {
+    const r = 45;
+    const c = 2 * Math.PI * r;
+    return c - (score / 1000) * c;
+  };
+
   return (
     <div className="space-y-8 pb-32 text-accent bg-[#020205] min-h-screen">
       
+      {/* NATIVE CRT SCANLINES OVERLAY */}
+      <MatrixOverlay />
+
       {/* HEADER BAR WITH RESPONSIVE DUAL-PROVIDER WALLET SYSTEM */}
       <header className="sticky top-0 z-50 w-full border-b border-accent/20 bg-[#020205]/80 backdrop-blur-xl py-4 px-4 sm:px-8 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
         <div className="flex items-center gap-3">
