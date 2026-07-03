@@ -1,5 +1,5 @@
 import React from "react";
-import "@/app/globals.css";
+import "./globals.css";
 import MatrixOverlay from "@/components/MatrixOverlay";
 
 export const metadata = {
@@ -26,7 +26,7 @@ export default function RootLayout({
         </main>
 
         {/* Global Monospace Footer */}
-        <footer className="relative z-10 w-full border-t border-accent/10 bg-background py-6 text-center text-[10px] font-mono text-gray-600">
+        <footer className="relative z-10 w-full border-t border-white/5 bg-background py-6 text-center text-[10px] font-mono text-gray-600">
           <div className="max-w-7xl mx-auto px-4">
             SYSTEM_PROTOCOL: COVENANT_CORE &bull; TRUST_THROUGH_CODE &bull; CASPER_BUILDATHON_2026
           </div>

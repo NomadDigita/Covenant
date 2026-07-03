@@ -15,8 +15,8 @@ body {
   background-color: var(--color-bg);
   /* Cosmic Nebula and Tactical Grid Blend Background */
   background-image: 
-    radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 10% 20%, rgba(124, 58, 237, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
     linear-gradient(rgba(57, 255, 20, 0.01) 1px, transparent 1px),
     linear-gradient(90deg, rgba(57, 255, 20, 0.01) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
@@ -40,7 +40,7 @@ body {
   top: -1px;
   left: -1px;
   right: -1px;
-  height: 8px;
+  height: 12px;
   border-top: 2px solid var(--border-color, var(--color-accent));
   border-left: 2px solid var(--border-color, var(--color-accent));
   border-right: 2px solid var(--border-color, var(--color-accent));
@@ -54,7 +54,7 @@ body {
   bottom: -1px;
   left: -1px;
   right: -1px;
-  height: 8px;
+  height: 12px;
   border-bottom: 2px solid var(--border-color, var(--color-accent));
   border-left: 2px solid var(--border-color, var(--color-accent));
   border-right: 2px solid var(--border-color, var(--color-accent));

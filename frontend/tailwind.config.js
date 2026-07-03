@@ -8,12 +8,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#020204", // Pitch Black
-        cyberCard: "#05050c",  // Dark HUD card
+        background: "#020204", // Deep Obsidian Black
+        cyberCard: "#05050c",  // Dark HUD Card
         accent: "#ff7a00",     // HACKNITE Orange (Primary CTA)
         cyberGreen: "#39ff14", // Electric Green (Reputation)
         cyberCyan: "#00f0ff",  // Electric Cyan (Credit)
-        cyberViolet: "#7c3aed" // Cosmic Violet (Glow / Ambient)
+        cyberViolet: "#7c3aed" // Cosmic Purple (Glow / Ambient)
       },
       boxShadow: {
         glow: "0 0 15px rgba(255, 122, 0, 0.15)",
