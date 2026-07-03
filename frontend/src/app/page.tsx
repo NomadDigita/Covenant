@@ -67,7 +67,7 @@ export default function DashboardPage() {
     setNetworkStats(stats);
   };
 
-  // Helper to retrieve the active Casper Wallet provider
+  // Helper to retrieve the active Casper Wallet provider (auto-detects v2.x and v1.x)
   const getCasperProvider = () => {
     if (typeof window === "undefined") return null;
     if (window.CasperWalletProvider) {
@@ -94,8 +94,11 @@ export default function DashboardPage() {
         if (pubKey) {
           setConnectedWallet(pubKey);
           setWalletQuery(pubKey);
+          
+          // Auto-populate onboarding form inputs with the connected wallet hex
           setRegWallet(pubKey);
           setRegOwner(pubKey);
+          
           addTerminalLog(`[SYSTEM_CONNECT] Wallet authorized successfully. Address: ${pubKey}`);
           fetchAgentProfile(pubKey);
         }
@@ -276,6 +279,7 @@ export default function DashboardPage() {
     setTransferSuccess(null);
     addTerminalLog(`[CovenantPay_TRANSFER] Executing transaction of ${transferAmount} CSPR to: ${transferRecipient.substring(0, 16)}...`);
     try {
+      // Logic targets your backend transfer logging endpoint
       setTransferSuccess(`Micropayment of ${transferAmount} CSPR transferred successfully on-chain.`);
       addTerminalLog(`[CovenantPay_SUCCESS] Broadcast transfer successfully. Volume limits recalculated.`);
       if (profile) fetchAgentProfile(profile.identity.wallet_address);
@@ -437,8 +441,8 @@ export default function DashboardPage() {
                 
                 {/* RESOLVER PANEL - CORNER BRACKETS */}
                 <div className="cyber-card rounded p-6" style={{ "--border-color": "var(--color-cyan)" } as React.CSSProperties}>
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-cyberCyan mb-4 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyberCyan" />
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#00f0ff] mb-4 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]" />
                     RESOLVE_AGENT_PROFILE
                   </h3>
                   <div className="space-y-3 font-mono">
