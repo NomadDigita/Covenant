@@ -1,6 +1,26 @@
 import React from "react";
+import { Orbitron, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import MatrixOverlay from "@/components/MatrixOverlay";
+
+// Initialize and bind standard Google Fonts for high-fidelity rendering
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata = {
   title: "Covenant ID | Cybernetic Trust Infrastructure",
@@ -13,24 +33,42 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-background text-[#39ff14] min-h-screen flex flex-col selection:bg-accent selection:text-background">
+    <html 
+      lang="en" 
+      className={`dark ${orbitron.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
+      <body className="bg-void-base text-gray-300 min-h-screen flex flex-col font-sans selection:bg-neon-primary selection:text-void-base relative antialiased overflow-x-hidden">
         
-        {/* CRT SCANLINES & MATRIX OVERLAY */}
+        {/* CRT Scanline Phosphor Overlay */}
         <div className="crt-scanlines" />
+
+        {/* Matrix Canvas Rain Streams */}
         <MatrixOverlay />
 
-        {/* Core Main Scroll Area */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-          {children}
-        </main>
+        {/* Unified Application Viewport Shell */}
+        <div className="min-h-screen flex relative z-10">
+          
+          {/* Main Content Area Grid (Collapses sidebar on tiny viewports) */}
+          <div className="flex-1 flex flex-col min-h-screen w-full relative">
+            
+            {/* Scrollable Viewport Canvas */}
+            <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8">
+              {children}
+            </main>
 
-        {/* Global Monospace Footer */}
-        <footer className="relative z-10 w-full border-t border-white/5 bg-background py-6 text-center text-[10px] font-mono text-gray-600">
-          <div className="max-w-7xl mx-auto px-4">
-            SYSTEM_PROTOCOL: COVENANT_CORE &bull; TRUST_THROUGH_CODE &bull; CASPER_BUILDATHON_2026
+            {/* Persistent Tactical Footer */}
+            <footer className="w-full border-t border-white/5 py-4 px-8 bg-void-base/80 backdrop-blur-md">
+              <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-[10px] font-mono text-gray-600 gap-2">
+                <span>SYSTEM_PROTOCOL: COVENANT_CORE_V1.1.0</span>
+                <span>ANCHORED_BY: CASPER_TESTNET</span>
+                <span>STATUS: OPERATIONAL_GRID</span>
+              </div>
+            </footer>
+
           </div>
-        </footer>
+
+        </div>
+
       </body>
     </html>
   );

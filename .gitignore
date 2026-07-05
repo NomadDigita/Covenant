@@ -1,44 +1,59 @@
-
+# ==============================================================================
+# 1. SECURITY & CRYPTOGRAPHIC PRIVATE KEYS (Critical Protection)
+# ==============================================================================
 *.pem
 Account 1_secret_key_1.pem
 Account_1_secret_key_1.pem
 key.pem
+**/key.pem
+**/Account*.pem
 
-# Block all local environment configurations
+# ==============================================================================
+# 2. LOCAL ENVIRONMENT CONFIGURATIONS
+# ==============================================================================
 .env
 .env.local
 .env.production
 .env.development
 .env.test
+.env*.local
 
+# ==============================================================================
+# 3. NODE.JS & NEXT.JS BUILD ARTIFACTS
+# ==============================================================================
 node_modules/
+**/node_modules/
 .next/
-out/
-build/
+**/out/
+**/build/
 .pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 npm-debug.log*
 
 # ==============================================================================
-# 3. BACKEND GO BINARIES & WORKSPACE SYSTEM CACHES
+# 4. BACKEND GO BINARIES & WORKSPACE CACHES
 # ==============================================================================
 *.exe
+/backend/backend
+/backend/*.exe
 go.work
 go.work.sum
 .idea/
 .vscode/
 
 # ==============================================================================
-# 4. CONTRACT BUILD WASM TARGETS & RUST ARTIFACTS
+# 5. CONTRACT BUILD WASM TARGETS & RUST ARTIFACTS
 # ==============================================================================
 contracts/target/
 contracts/Cargo.lock
 contracts/_build_contract.rs
 contracts/wasm/*.wasm
+**/target/
+**/wasm/*.wasm
 
 # ==============================================================================
-# 5. GENERAL OPERATING SYSTEM CACHES
+# 6. SYSTEM LOGS & OPERATING SYSTEM CACHES
 # ==============================================================================
 .DS_Store
 Thumbs.db

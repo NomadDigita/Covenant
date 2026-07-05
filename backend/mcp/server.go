@@ -1,7 +1,9 @@
 package mcp
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"backend/database"
 	"backend/models"
@@ -79,6 +81,15 @@ func HandleMCPEndpoint(c *gin.Context) {
 			var credit models.CreditScore
 			database.DB.Where("agent_id = ?", agent.ID).First(&credit)
 
+			// FIXED: Replaced corrupted "string(rune(score))" casts with fmt.Sprintf
+			formattedText := fmt.Sprintf(
+				"Agent: %s | Trust Score: %d/1000 | Credit Score: %d/1000 | Capabilities: %v",
+				agent.Name,
+				reputation.TrustScore,
+				credit.CreditScore,
+				agent.Capabilities,
+			)
+
 			c.JSON(http.StatusOK, gin.H{
 				"jsonrpc": "2.0",
 				"id":      req.ID,
@@ -86,7 +97,7 @@ func HandleMCPEndpoint(c *gin.Context) {
 					"content": []gin.H{
 						{
 							"type": "text",
-							"text": "Agent: " + agent.Name + " | Trust Score: " + string(rune(reputation.TrustScore)) + " | Credit: " + string(rune(credit.CreditScore)),
+							"text": formattedText,
 						},
 					},
 				},
@@ -94,6 +105,60 @@ func HandleMCPEndpoint(c *gin.Context) {
 			return
 		}
 
+		// FIXED: Implemented missing "getMarketplaceJobs" execution logic block
+		if toolName == "getMarketplaceJobs" {
+			status, _ := toolArguments["status"].(string)
+			status = strings.TrimSpace(strings.ToLower(status))
+
+			var jobs []models.MarketplaceJob
+			query := database.DB
+
+			if status != "" {
+				query = query.Where("status = ?", status)
+			}
+
+			if err := query.Order("created_at desc").Limit(10).Find(&jobs).Error; err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"jsonrpc": "2.0",
+					"id":      req.ID,
+					"result":  gin.H{"content": []gin.H{{"type": "text", "text": "Failed to retrieve job listings."}}},
+				})
+				return
+			}
+
+			var responseBuilder strings.Builder
+			responseBuilder.WriteString("Covenant Marketplace Job Listings:\n")
+			for _, job := range jobs {
+				responseBuilder.WriteString(fmt.Sprintf(
+					"- ID: %s | Title: %s | Budget: %.2f CSPR | Status: %s\n",
+					job.ID,
+					job.Title,
+					job.Budget,
+					job.Status,
+				))
+			}
+
+			responseText := responseBuilder.String()
+			if len(jobs) == 0 {
+				responseText = "No active marketplace jobs found matching criteria."
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"jsonrpc": "2.0",
+				"id":      req.ID,
+				"result": gin.H{
+					"content": []gin.H{
+						{
+							"type": "text",
+							"text": responseText,
+						},
+					},
+				},
+			})
+			return
+		}
+
+		// Fallback for un-mapped tool names
 		c.JSON(http.StatusOK, gin.H{
 			"jsonrpc": "2.0",
 			"id":      req.ID,

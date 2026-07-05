@@ -51,6 +51,17 @@ export interface MarketplaceJob {
   completed_at?: string;
 }
 
+export interface LedgerTx {
+  id: string;
+  sender_wallet: string;
+  receiver_wallet: string;
+  amount: number;
+  memo: string;
+  tx_hash: string;
+  status: string;
+  timestamp: string;
+}
+
 export interface AuditResult {
   message: string;
   audit_id: string;
@@ -60,7 +71,8 @@ export interface AuditResult {
   audit_explanation: string;
 }
 
-// 1. Identity Layer Calls (CovenantID)
+// ─── 1. IDENTITY LAYER CALLS (CovenantID) ───────────────────────────────────
+
 export async function registerAgent(payload: {
   wallet_address: string;
   name: string;
@@ -90,7 +102,8 @@ export async function getAgentByWallet(wallet: string): Promise<CompleteProfile>
   return res.json();
 }
 
-// 2. Marketplace Layer Calls (Covenant Market)
+// ─── 2. MARKETPLACE LAYER CALLS (Covenant Market) ───────────────────────────
+
 export async function postJob(payload: {
   creator_address: string;
   title: string;
@@ -150,16 +163,58 @@ export async function getMarketplaceJobs(status?: string): Promise<MarketplaceJo
   return res.json();
 }
 
-// 3. Audit Layer Calls (CovenantAudit)
-export async function requestAuditExplanation(payload: {
-  agent_id: string;
-  action_type: string;
-  risk_level: string;
-  detail: string;
-}): Promise<AuditResult> {
-  const res = await fetch(`${BASE_URL}/audits/explain`, {
+// ─── 3. LEDGER LAYER CALLS (CovenantPay / x402) ──────────────────────────────
+
+export async function executePayment(payload: {
+  sender_wallet: string;
+  receiver_wallet: string;
+  amount: number;
+  memo: string;
+  tx_hash: string;
+}): Promise<{ message: string }> {
+  const res = await fetch(`${BASE_URL}/payments/transfer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to record payment");
+  }
+  return res.json();
+}
+
+export async function getPaymentHistory(): Promise<LedgerTx[]> {
+  const res = await fetch(`${BASE_URL}/payments/history`);
+  if (!res.ok) {
+    throw new Error("Failed to load active ledger history");
+  }
+  return res.json();
+}
+
+// ─── 4. AUDIT LAYER CALLS (CovenantAudit) ────────────────────────────────────
+
+// FIXED: Added headers block configuration to transmit dynamic payment proofs
+export async function requestAuditExplanation(
+  payload: {
+    agent_id: string;
+    action_type: string;
+    risk_level: string;
+    detail: string;
+  },
+  paymentProof?: string
+): Promise<AuditResult> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (paymentProof) {
+    headers["X-402-Payment-Proof"] = paymentProof;
+  }
+
+  const res = await fetch(`${BASE_URL}/audits/explain`, {
+    method: "POST",
+    headers: headers,
     body: JSON.stringify(payload),
   });
   if (!res.ok) {

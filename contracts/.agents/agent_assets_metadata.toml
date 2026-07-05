@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "bEr2HE1wZ0k92KMrd3tTl"
+uri = "file://covenant-contracts.tar.gz"
+type = "unspecified"
+title = "Covenant Contracts — Source, WASM & Deploy Scripts"

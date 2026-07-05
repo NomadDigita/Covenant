@@ -1,0 +1,1 @@
+- [Casper Odra build setup](casper-odra-build.md) — Odra 0.8.1 contracts on stable Rust require RUSTC_BOOTSTRAP=1 + custom wasm32 sysroot + patched vendor

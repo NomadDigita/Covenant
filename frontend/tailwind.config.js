@@ -8,21 +8,37 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#020204", // Deep Obsidian Black
-        cyberCard: "#05050c",  // Dark HUD Card
-        accent: "#ff7a00",     // HACKNITE Orange (Primary CTA)
-        cyberGreen: "#39ff14", // Electric Green (Reputation)
-        cyberCyan: "#00f0ff",  // Electric Cyan (Credit)
-        cyberViolet: "#7c3aed" // Cosmic Purple (Glow / Ambient)
+        // The Void (Background Tones)
+        void: {
+          base: "#05050A",     // Pitch black with 2% blue tint
+          surface: "#0D0D14",  // Base layer of glass panels
+          elevated: "#151520", // Dropdowns, modals, hover states
+        },
+        // Neon Emitters (Accents & Brand)
+        neon: {
+          primary: "#FF5500",   // Covenant Orange
+          secondary: "#00E5FF", // Cyber Cyan
+          accent: "#B500FF",    // Plasma Purple
+        },
+        // Functional Indicators (Agent States)
+        status: {
+          idle: "#3A3A4A",       // Dim gray
+          processing: "#F5A623", // Pulsing amber
+          success: "#00FF66",    // Neon green (payment pass, KYC valid)
+          alert: "#FF003C",      // Crimson red (anomaly alert, failed audit)
+        }
       },
       boxShadow: {
-        glow: "0 0 15px rgba(255, 122, 0, 0.15)",
-        strongGlow: "0 0 25px rgba(255, 122, 0, 0.35)",
-        greenGlow: "0 0 15px rgba(57, 255, 20, 0.15)",
-        cyanGlow: "0 0 15px rgba(0, 240, 255, 0.15)",
+        // Ambient Glow System
+        "glow-primary": "0 0 20px rgba(255, 85, 0, 0.4)",
+        "glow-secondary": "0 0 20px rgba(0, 229, 255, 0.4)",
+        "glow-alert": "0 0 20px rgba(255, 0, 60, 0.6)",
+        "glow-glass": "inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 8px 32px 0 rgba(0, 0, 0, 0.5)",
       },
       fontFamily: {
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
+        display: ["var(--font-display)", "sans-serif"],
+        sans: ["var(--font-sans)", "sans-serif"],
+        mono: ["var(--font-mono)", "monospace"],
       }
     },
   },

@@ -1,0 +1,5 @@
+[target.wasm32-unknown-unknown]
+rustflags = []
+
+[build]
+# Use custom sysroot for wasm32 target

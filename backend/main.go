@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"backend/config"
 	"backend/controllers"
 	"backend/database"
 	"backend/mcp"
@@ -15,16 +16,19 @@ import (
 func main() {
 	log.Println("Starting Covenant Production API Gateway...")
 
-	// 1. Initialize Supabase Connection pool with Simple Protocol
-	database.InitDatabase()
+	// 1. Load Centralized Configurations dynamically from environment
+	config.LoadConfig()
 
-	// 2. Launch the Asynchronous Swarm Agent Background Workers (Rep, Credit, Risk)
+	// 2. Initialize Supabase Connection pool with Simple Protocol (PgBouncer compatible)
+	database.ConnectDatabase()
+
+	// 3. Launch the Asynchronous Swarm Agent Background Workers (Rep, Credit, Risk)
 	services.StartSwarmOrchestration()
 
-	// 3. Initialize Router
+	// 4. Initialize Router
 	router := gin.Default()
 
-	// 4. Setup CORS Middleware
+	// 5. Setup CORS Middleware
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -38,7 +42,7 @@ func main() {
 		c.Next()
 	})
 
-	// 5. Global Health Check Endpoint
+	// 6. Global Health Check Endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":   "healthy",
@@ -46,10 +50,10 @@ func main() {
 		})
 	})
 
-	// 6. Setup Casper Model Context Protocol (MCP) Server Endpoint
+	// 7. Setup Casper Model Context Protocol (MCP) Server Endpoint
 	router.POST("/mcp", mcp.HandleMCPEndpoint)
 
-	// 7. Consolidated Versioned API Routes (v1)
+	// 8. Consolidated Versioned API Routes (v1)
 	v1 := router.Group("/api/v1")
 	{
 		// --- CovenantID Identity Layer ---
@@ -72,8 +76,8 @@ func main() {
 		v1.GET("/audits/:agent_id", controllers.GetAuditLogsByAgent)
 	}
 
-	// 8. Launch Server on Port 8080
-	port := ":8080"
+	// 9. Launch Server on Port configured in config
+	port := ":" + config.GlobalConfig.Port
 	log.Printf("Covenant Production Gateway listening on http://localhost%s", port)
 	if err := router.Run(port); err != nil {
 		log.Fatalf("Critical Gateway crash: %v", err)

@@ -7,7 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
+
+	"backend/config"
 )
 
 // GeminiRequest represents the JSON request structure for Google Gemini
@@ -38,7 +39,12 @@ type ContentResponse struct {
 
 // GenerateAuditJustification cascades through multiple Gemini models to handle transient overloads
 func GenerateAuditJustification(action string, trust int, credit int, risk string, detail string) (string, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
+	// FIXED: Updated to consume centralized configuration parameters
+	if config.GlobalConfig == nil {
+		return "", fmt.Errorf("configuration engine not initialized")
+	}
+
+	apiKey := config.GlobalConfig.GeminiAPIKey
 	if apiKey == "" {
 		return "", fmt.Errorf("GEMINI_API_KEY is not configured in system environment variables")
 	}

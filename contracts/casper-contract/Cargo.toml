@@ -1,0 +1,27 @@
+[package]
+name = "covenant"
+version = "1.0.0"
+edition = "2021"
+authors = ["Covenant Team"]
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "covenant_build_contract"
+path = "_build_contract.rs"
+
+[dependencies]
+# Pinned exactly to match the patched vendor/odra-casper-wasm-env-0.8.1
+odra = { version = "=0.8.1", default-features = false }
+casper-event-standard = { version = "=0.4.1", default-features = false }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+overflow-checks = true
+
+[patch.crates-io]
+odra-casper-wasm-env = { path = "vendor/odra-casper-wasm-env-0.8.1" }

@@ -13,10 +13,10 @@ import (
 func StartSwarmOrchestration() {
 	log.Println("[Swarm Orchestrator] Initializing background AI Swarm Workers...")
 
-	// Load intervals from environment variables or default to safe, low-frequency durations (minutes instead of seconds)
-	reputationInterval := getEnvDuration("SWARM_REPUTATION_INTERVAL", 15*time.Minute)
-	creditInterval := getEnvDuration("SWARM_CREDIT_INTERVAL", 20*time.Minute)
-	riskInterval := getEnvDuration("SWARM_RISK_INTERVAL", 30*time.Minute)
+	// Default to rapid intervals (seconds) for dynamic hackathon demonstration feedback loops
+	reputationInterval := getEnvDuration("SWARM_REPUTATION_INTERVAL", 15*time.Second)
+	creditInterval := getEnvDuration("SWARM_CREDIT_INTERVAL", 20*time.Second)
+	riskInterval := getEnvDuration("SWARM_RISK_INTERVAL", 30*time.Second)
 
 	// Launch background routines
 	go startReputationAgent(reputationInterval)
@@ -42,7 +42,7 @@ func startReputationAgent(interval time.Duration) {
 	for range ticker.C {
 		log.Println("[Reputation Agent] Aggregating marketplace metrics...")
 
-		// High-Performance Aggregation Query: Compiles total and completed jobs for ALL active providers in one single query
+		// High-Performance Aggregation Query: Compiles total and completed jobs for ALL active providers in one query
 		var stats []struct {
 			ProviderID string `gorm:"column:provider_id"`
 			Total      int64  `gorm:"column:total"`
@@ -65,7 +65,12 @@ func startReputationAgent(interval time.Duration) {
 			if stat.ProviderID == "" {
 				continue
 			}
-			rate := (float64(stat.Completed) / float64(stat.Total)) * 100.0
+
+			// FIXED: Add mathematical guard against division-by-zero (Total == 0) to prevent NaN errors
+			var rate float64 = 100.00 // Default baseline for new agents with zero jobs
+			if stat.Total > 0 {
+				rate = (float64(stat.Completed) / float64(stat.Total)) * 100.0
+			}
 
 			database.DB.Model(&models.ReputationScore{}).
 				Where("agent_id = ?", stat.ProviderID).
@@ -131,10 +136,10 @@ func startRiskAgent(interval time.Duration) {
 		log.Println("[Risk Agent] Analyzing behavior profiles for threat telemetry...")
 
 		var anomalies []struct {
-			AgentID      string  `gorm:"column:agent_id"`
-			Name         string  `gorm:"column:name"`
-			TrustScore   int     `gorm:"column:trust_score"`
-			FailureRate  float64 `gorm:"column:failure_rate"`
+			AgentID     string  `gorm:"column:agent_id"`
+			Name        string  `gorm:"column:name"`
+			TrustScore  int     `gorm:"column:trust_score"`
+			FailureRate float64 `gorm:"column:failure_rate"`
 		}
 
 		// Pull only elevated risk records
@@ -151,7 +156,8 @@ func startRiskAgent(interval time.Duration) {
 
 		for _, anomaly := range anomalies {
 			log.Printf("[Risk Agent Alert] High anomaly detected on Agent %s! Failure rate elevated to %.2f%%", anomaly.Name, anomaly.FailureRate)
-			
+
+			// Record an alert directly to audit logs
 			audit := models.AuditLog{
 				AgentID:             anomaly.AgentID,
 				ActionType:          "Risk Anomaly Triggered",
