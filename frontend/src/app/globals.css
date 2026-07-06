@@ -51,6 +51,24 @@ body {
     linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
 }
 
+/* Force high-contrast text and labels in light mode globally */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6, .light label {
+  color: #1A1A24 !important;
+}
+
+.light p, .light text, .light input, .light textarea, .light select {
+  color: #3A3A4A !important;
+}
+
+.light .text-gray-400, .light .text-gray-500, .light .text-gray-600 {
+  color: #4A4A5A !important;
+}
+
+/* Ensure placeholder visibility in inputs */
+.light input::placeholder, .light textarea::placeholder {
+  color: #A2A2B0 !important;
+}
+
 /* CRT Phosphor Scanline Overlay Effect (Dimmed in Light Mode) */
 .crt-scanlines {
   position: fixed;
@@ -59,13 +77,13 @@ body {
   pointer-events: none;
   background: linear-gradient(
     rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.12) 50%
+    rgba(0, 0, 0, 0.15) 50%
   );
   background-size: 100% 4px;
 }
 
 .light .crt-scanlines {
-  opacity: 0.25; /* Highly softened on light backgrounds */
+  opacity: 0.25; /* Softened on light backgrounds */
 }
 
 /* Pulsing Status Dot Animations */

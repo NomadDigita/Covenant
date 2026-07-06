@@ -13,7 +13,7 @@ import CovenantLogo from "@/components/CovenantLogo";
 import CasperEcosystemLogo from "@/components/CasperEcosystemLogo";
 import { ShieldCheck, Scale, Coins, Menu, X, Cpu } from "lucide-react";
 
-// FIXED: Declare the global window interface extensions to clear TypeScript compiler warnings
+// Declare the global window interface extensions to clear TypeScript compiler warnings
 declare global {
   interface Window {
     CasperWalletProvider?: any;
@@ -104,11 +104,19 @@ export default function DashboardPage() {
     return null;
   };
 
-  // Connect to Casper Wallet browser extension natively
+  // FIXED: Added check to detect mobile user-agents and prompt custom Web3 guidance
   const handleConnectWallet = async () => {
     const provider = getCasperProvider();
     if (!provider) {
-      alert("Casper Wallet extension not found. Please install the browser extension to connect.");
+      // Check if user is navigating from a mobile OS agent
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        alert(
+          "Casper Wallet Mobile Tip:\n\nTo authorize and connect your wallet on a mobile device, please open this dApp link directly inside the built-in browser of your Casper Wallet Mobile App."
+        );
+      } else {
+        alert("Casper Wallet extension not found. Please install the browser extension to connect.");
+      }
       return;
     }
     setIsWalletConnecting(true);
