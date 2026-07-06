@@ -104,7 +104,7 @@ export default function DashboardPage() {
     return null;
   };
 
-  // FIXED: Added check to detect mobile user-agents and prompt custom Web3 guidance
+  // Connect to Casper Wallet browser extension natively
   const handleConnectWallet = async () => {
     const provider = getCasperProvider();
     if (!provider) {
@@ -383,7 +383,7 @@ export default function DashboardPage() {
               {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
             <CovenantLogo className="w-6 h-6 text-neon-primary" />
-            <span className="font-display font-black text-xs text-white uppercase tracking-widest hidden sm:inline">COVENANT_CANVAS</span>
+            <span className="font-display font-black text-xs text-white uppercase tracking-widest hidden sm:inline">Covenant Canvas</span>
           </div>
           
           {/* CO-BRANDED CASPER LOCKUP */}
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                 <GlassPanel className="p-5 space-y-4" glowColor="secondary">
                   <h3 className="font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-neon-secondary animate-pulse" />
-                    RESOLVE_AGENT_PROFILE
+                    Resolve Agent Profile
                   </h3>
                   <div className="space-y-3 font-mono">
                     <input
@@ -418,7 +418,7 @@ export default function DashboardPage() {
                       onClick={() => fetchAgentProfile(walletQuery)}
                       className="w-full py-2.5 rounded border border-neon-secondary/30 bg-neon-secondary/5 font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary hover:bg-neon-secondary/10 hover:shadow-glow-secondary transition-all"
                     >
-                      EXECUTE_QUERY
+                      Execute Query
                     </button>
                   </div>
                   {error && <div className="p-3 bg-red-950/20 border border-red-500/20 text-red-400 rounded">{error}</div>}
@@ -426,7 +426,7 @@ export default function DashboardPage() {
 
                 {/* Agent Onboarding Panel */}
                 <GlassPanel className="p-5 space-y-4">
-                  <h3 className="font-mono font-bold text-xs uppercase tracking-wider text-neon-primary">ONBOARD_COVENANT_ID</h3>
+                  <h3 className="font-mono font-bold text-xs uppercase tracking-wider text-neon-primary">Onboard Covenant ID</h3>
                   <form onSubmit={handleRegister} className="space-y-4 font-mono">
                     <div className="space-y-3 text-xs">
                       <div>
@@ -474,7 +474,7 @@ export default function DashboardPage() {
                       type="submit"
                       className="w-full py-2.5 rounded border border-neon-primary/30 bg-neon-primary/5 font-mono font-bold text-xs uppercase tracking-wider text-neon-primary hover:bg-neon-primary/10 hover:shadow-glow-primary transition-all"
                     >
-                      REGISTER_AGENT_ID
+                      Register Agent ID
                     </button>
                   </form>
                   {regSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded">{regSuccess}</div>}
@@ -495,7 +495,7 @@ export default function DashboardPage() {
                           <span className="text-[9px] text-gray-600 block mt-1 tracking-widest">REG_ID: {profile.identity.id}</span>
                         </div>
                         <span className="px-2.5 py-1 rounded bg-status-success/5 border border-status-success/20 text-[9px] font-bold text-[#00FF66] tracking-widest uppercase self-start sm:self-center">
-                          ACTIVE_ID_ESTABLISHED
+                          Active ID Established
                         </span>
                       </div>
                       <p className="text-gray-500 text-xs leading-relaxed font-mono">
