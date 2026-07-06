@@ -20,9 +20,9 @@
 
 /* ─── LIGHT THEME OVERRIDES ────────────────────────────────────────────────── */
 .light {
-  --color-void-base: #F4F4F9;      /* Light tactical gray */
-  --color-void-surface: #FFFFFF;   /* Solid white card layers */
-  --color-void-elevated: #E2E2EA;  /* Dropdowns & elevated borders */
+  --color-void-base: #F4F4F9;      /* Light tactical gray background */
+  --color-void-surface: #FFFFFF;   /* Solid white card containers */
+  --color-void-elevated: #E2E2EA;  /* Dropdowns & elevated boundaries */
 }
 
 /* Base Body Layout and Grids */
@@ -51,7 +51,8 @@ body {
     linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
 }
 
-/* Force high-contrast text and labels in light mode globally */
+/* ─── LIHGT MODE CONTRAST OVERRIDES ────────────────────────────────────────── */
+/* Force absolute text legibility on white cards globally */
 .light h1, .light h2, .light h3, .light h4, .light h5, .light h6, .light label {
   color: #1A1A24 !important;
 }
@@ -60,13 +61,29 @@ body {
   color: #3A3A4A !important;
 }
 
-.light .text-gray-400, .light .text-gray-500, .light .text-gray-600 {
+/* Overwrite hardcoded text-white elements when light mode is active */
+.light .text-white {
+  color: #1A1A24 !important;
+}
+
+/* Overwrite hardcoded text-gray-xxx elements when light mode is active */
+.light .text-gray-300, .light .text-gray-400, .light .text-gray-500, .light .text-gray-600 {
   color: #4A4A5A !important;
 }
 
-/* Ensure placeholder visibility in inputs */
+/* Ensure placeholder and borders are legible */
+.light input, .light textarea {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1A1A24 !important;
+}
+
 .light input::placeholder, .light textarea::placeholder {
   color: #A2A2B0 !important;
+}
+
+/* Concentric radar chart line visibility */
+.light polygon[stroke="rgba(0, 229, 255, 0.15)"] {
+  stroke: rgba(0, 229, 255, 0.35) !important;
 }
 
 /* CRT Phosphor Scanline Overlay Effect (Dimmed in Light Mode) */

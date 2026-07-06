@@ -66,11 +66,12 @@ export function Sidebar({
     applyTheme("dark");
   }, []);
 
+  // FIXED: Replaced underscores with clean display labels
   const navItems = [
-    { id: "identity", label: "01_COVENANT_ID", icon: ShieldCheck },
-    { id: "market", label: "02_DISCOVERY", icon: Compass },
-    { id: "ledger", label: "03_LEDGER_PAY", icon: Layers },
-    { id: "audits", label: "04_AUDIT_LOGS", icon: CheckCircle2 },
+    { id: "identity", label: "01 Covenant ID", icon: ShieldCheck },
+    { id: "market", label: "02 Discovery", icon: Compass },
+    { id: "ledger", label: "03 Ledger Pay", icon: Layers },
+    { id: "audits", label: "04 Audit Logs", icon: CheckCircle2 },
   ] as const;
 
   return (
@@ -81,7 +82,7 @@ export function Sidebar({
         <div className="flex items-center gap-3">
           <CovenantLogo className="w-8 h-8 text-neon-primary" />
           <div>
-            <h1 className="text-xs font-black tracking-widest text-white uppercase">COVENANT_HUD</h1>
+            <h1 className="text-xs font-black tracking-widest text-white uppercase">Covenant HUD</h1>
             <div className="flex items-center gap-1.5 mt-1 text-[9px] text-gray-500 font-bold uppercase">
               <span className="w-1.5 h-1.5 rounded-full bg-status-success status-active-pulse" />
               Casper Active
@@ -118,9 +119,10 @@ export function Sidebar({
       <div className="space-y-6 pt-6 border-t border-white/5">
         
         {/* LIGHT / DARK / SYSTEM switcher panel */}
+        {/* FIXED: Removed underscores from text */}
         <div className="space-y-2">
           <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block">
-            INTERFACE_THEME
+            Interface Theme
           </span>
           <div className="grid grid-cols-3 gap-1 bg-void-base border border-white/5 p-1 rounded-md">
             <button
@@ -160,9 +162,10 @@ export function Sidebar({
         </div>
 
         {/* WALLET WIDGET PANEL */}
+        {/* FIXED: Removed underscores from text */}
         <div className="space-y-2">
           <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block">
-            OPERATOR_KEYS
+            Operator Keys
           </span>
           {connectedWallet ? (
             <div className="bg-void-elevated border border-white/5 p-3 rounded-md space-y-2.5">

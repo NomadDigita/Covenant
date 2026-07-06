@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, SlidersHorizontal, ShieldCheck, DollarSign, Activity } from "lucide-react";
+import { Search, SlidersHorizontal, Activity, DollarSign } from "lucide-react";
 import { GlassPanel } from "./GlassPanel";
-import { NeonButton } from "./NeonButton";
 
 // Interfaces aligned with backend models.go structure
 export interface MarketAgent {
@@ -48,21 +47,18 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
     );
   };
 
-  // ─── Precision Filter Engine ────────────────────────────────────────────────
+  // ─── Filter Engine ─────────────────────────────────────────────────────────
   const filteredAgents = useMemo(() => {
     return agents.filter((agent) => {
-      // 1. Text Query Filter (Name, Wallet, Description, or Capabilities)
       const matchesText =
         searchQuery === "" ||
         agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         agent.wallet_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         agent.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // 2. Score Bounds Filter
       const matchesTrust = agent.trust_score >= minTrust;
       const matchesCredit = agent.credit_score >= minCredit;
 
-      // 3. Capabilities Checklist Filter
       const matchesCaps =
         selectedCaps.length === 0 ||
         selectedCaps.every((c) =>
@@ -76,13 +72,13 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
   return (
     <div className="space-y-6 font-mono text-xs">
       
-      {/* A. MASSIVE FULL-WIDTH GLASS SEARCH INPUT */}
+      {/* A. FULL-WIDTH GLASS SEARCH INPUT */}
       <GlassPanel className="p-4" glowColor="secondary">
         <div className="flex items-center gap-3">
           <Search className="w-5 h-5 text-neon-secondary shrink-0" />
           <input
             type="text"
-            placeholder="> SEARCH MERCENARY AGENTS BY ID, WALLET, DESCRIPTION, OR VECTOR..."
+            placeholder="> Search mercenary agents by ID, wallet, or capabilities..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-transparent text-neon-secondary font-mono text-xs uppercase tracking-wider outline-none border-none focus:ring-0 placeholder:text-gray-800"
@@ -90,16 +86,17 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
         </div>
       </GlassPanel>
 
-      {/* B. DUAL-GRID LAYOUT (FILTERS LEFT, MERCENARIES RIGHT) */}
+      {/* B. DUAL-GRID LAYOUT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: TACTICAL CONTROL PANEL (FILTERS) */}
+        {/* LEFT COLUMN: FILTERS PANEL */}
         <div className="lg:col-span-4">
           <GlassPanel className="p-6 space-y-6">
             
+            {/* FIXED: Removed underscores from header */}
             <div className="flex items-center gap-2 border-b border-white/5 pb-3">
               <SlidersHorizontal className="w-4 h-4 text-neon-primary" />
-              <h3 className="font-display font-bold uppercase tracking-wider text-white">HUD_FILTERS</h3>
+              <h3 className="font-display font-bold uppercase tracking-wider text-white">Market Filters</h3>
             </div>
 
             {/* TRUST THRESHOLD SLIDER */}
@@ -167,8 +164,9 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
 
         {/* RIGHT COLUMN: DISCOVERABLE MERCENARIES ROSTER */}
         <div className="lg:col-span-8 space-y-4">
+          {/* FIXED: Removed underscores from header */}
           <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-            MERCENARY_ROSTER ({filteredAgents.length} Active Nodes)
+            Active Mercenaries ({filteredAgents.length} Nodes)
           </h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -181,16 +179,17 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
                 >
                   <div className="space-y-4">
                     {/* Header: Orbitron Title & Orange Score */}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h5 className="font-display uppercase tracking-wider text-white text-sm font-bold">
+                    {/* FIXED: Added max-w boundary and flex-wrap properties to prevent overlaps */}
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="max-w-[70%] break-words">
+                        <h5 className="font-display uppercase tracking-wider text-white text-sm font-bold leading-tight">
                           {agent.name}
                         </h5>
-                        <span className="text-[9px] text-gray-600 font-mono tracking-widest block mt-0.5">
+                        <span className="text-[9px] text-gray-600 font-mono tracking-widest block mt-1">
                           {agent.wallet_address.substring(0, 16)}...
                         </span>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span className="font-display text-2xl font-black text-neon-primary tracking-tight block">
                           {agent.trust_score}
                         </span>
@@ -217,7 +216,8 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
                   </div>
 
                   {/* Footer & CTA Actions */}
-                  <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                  {/* FIXED: Applied flex-wrap and robust padding constraints to prevent button clipping */}
+                  <div className="mt-4 pt-4 border-t border-white/5 flex flex-wrap gap-4 items-center justify-between">
                     <div className="flex items-center gap-3 text-[10px] font-mono text-gray-600">
                       <span className="flex items-center gap-1 font-bold">
                         <Activity className="w-3 h-3 text-[#00FF66]" /> SR: {agent.success_rate}%
@@ -234,7 +234,7 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
                           e.stopPropagation();
                           onInspect(agent.wallet_address);
                         }}
-                        className="py-1 px-3 rounded border border-neon-secondary/25 text-[10px] text-neon-secondary uppercase font-bold hover:bg-neon-secondary/10 transition-colors"
+                        className="py-1.5 px-3 rounded border border-neon-secondary/25 text-[10px] text-neon-secondary uppercase font-bold hover:bg-neon-secondary/10 transition-colors shrink-0"
                       >
                         Inspect
                       </button>
@@ -243,7 +243,7 @@ export function MercenaryGrid({ agents, onInspect, onHire }: MercenaryGridProps)
                           e.stopPropagation();
                           onHire(agent);
                         }}
-                        className="py-1 px-3 rounded bg-neon-primary text-white text-[10px] font-bold uppercase hover:shadow-glow-primary transition-all duration-200"
+                        className="py-1.5 px-3.5 rounded bg-neon-primary text-white text-[10px] font-bold uppercase hover:shadow-glow-primary transition-all duration-200 shrink-0"
                       >
                         Hire
                       </button>
