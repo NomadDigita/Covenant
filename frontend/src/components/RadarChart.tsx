@@ -16,11 +16,10 @@ interface RadarChartProps {
 }
 
 export function RadarChart({ metrics, size = 220 }: RadarChartProps) {
-  // Trigonometric Polar Coordinates Generator
-  // 5 axes: Reputation, Reliability, Speed, Accuracy, Cost
   const numAxes = 5;
   const center = 100; // SVG Viewbox Center (x, y)
-  const maxRadius = 70; // Maximum boundary radius
+  // FIXED: Reduced maximum boundary radius from 70 to 52 to provide plenty of layout space
+  const maxRadius = 52; 
 
   // Pre-calculate coordinate angles for 5 pentagon vertices
   const angles = useMemo(() => {
@@ -71,14 +70,14 @@ export function RadarChart({ metrics, size = 220 }: RadarChartProps) {
 
   const valuePolygonString = valuePolygonPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
-  // Axis Labels Text Alignments and coordinates
+  // FIXED: Restored full "RELIABILITY" label, and updated offset anchors
   const labels = ["REPUTATION", "RELIABILITY", "SPEED", "ACCURACY", "COST"];
   const labelOffsets = [
-    { dx: -35, dy: -12 }, // Top Center
-    { dx: 6, dy: 3 },    // Top Right
-    { dx: 4, dy: 10 },   // Bottom Right
-    { dx: -60, dy: 10 }, // Bottom Left
-    { dx: -65, dy: 3 },  // Top Left
+    { dx: -28, dy: -10 }, // Top Center (Reputation)
+    { dx: 6, dy: 3 },     // Top Right (Reliability)
+    { dx: 4, dy: 10 },    // Bottom Right (Speed)
+    { dx: -55, dy: 10 },  // Bottom Left (Accuracy)
+    { dx: -38, dy: 3 },   // Top Left (Cost)
   ];
 
   return (
@@ -149,7 +148,7 @@ export function RadarChart({ metrics, size = 220 }: RadarChartProps) {
               x={pos.x + offset.dx}
               y={pos.y + offset.dy}
               fill="#A0A0B0"
-              fontSize="8"
+              fontSize="7"
               fontWeight="bold"
               className="tracking-tight"
             >

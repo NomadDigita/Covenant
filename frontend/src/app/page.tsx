@@ -11,7 +11,7 @@ import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
 import CovenantLogo from "@/components/CovenantLogo";
 import CasperEcosystemLogo from "@/components/CasperEcosystemLogo";
-import { ShieldCheck, Scale, Coins, Menu, X, Cpu } from "lucide-react";
+import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Shield, ArrowRight } from "lucide-react";
 
 // Declare the global window interface extensions to clear TypeScript compiler warnings
 declare global {
@@ -25,6 +25,9 @@ type TabType = "identity" | "market" | "ledger" | "audits";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>("identity");
+
+  // Gateway Access Control state
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   // Mobile Drawer Toggle States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -104,11 +107,9 @@ export default function DashboardPage() {
     return null;
   };
 
-  // Connect to Casper Wallet browser extension natively
   const handleConnectWallet = async () => {
     const provider = getCasperProvider();
     if (!provider) {
-      // Check if user is navigating from a mobile OS agent
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
         alert(
@@ -141,7 +142,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Disconnect Casper Wallet
   const handleDisconnectWallet = async () => {
     const provider = getCasperProvider();
     if (provider) {
@@ -151,7 +151,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Check initial connection status on mount
   const checkWalletConnection = async () => {
     const provider = getCasperProvider();
     if (provider) {
@@ -341,6 +340,82 @@ export default function DashboardPage() {
     checkWalletConnection();
   }, []);
 
+  // ─── GATEWAY ENTRY PORTAL INTERFACE ────────────────────────────────────────
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs">
+        <GlassPanel className="w-full max-w-2xl p-6 sm:p-10 space-y-8" glowColor="primary">
+          
+          {/* Logo Headers */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-white/5 pb-6">
+            <div className="flex items-center gap-3">
+              <CovenantLogo size={40} className="text-neon-primary" />
+              <div>
+                <h1 className="text-sm font-display font-black text-white tracking-widest uppercase">Covenant</h1>
+                <span className="text-[9px] text-gray-500 tracking-wider">TRUST THROUGH CODE</span>
+              </div>
+            </div>
+            <CasperEcosystemLogo size={28} className="opacity-95" />
+          </div>
+
+          {/* System Vision Overview */}
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#ff7a00]/10 border border-[#ff7a00]/30 text-[9px] font-bold text-[#ff7a00] tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00] animate-pulse" />
+              Ecosystem Gateway
+            </span>
+            <p className="text-gray-400 leading-relaxed text-xs">
+              Covenant establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents operating on the Casper Network.
+            </p>
+          </div>
+
+          {/* FAQ Accordion Lists Section */}
+          <div className="space-y-4">
+            <h3 className="font-display font-bold uppercase tracking-wider text-white text-xs">Ecosystem FAQ & Specifications</h3>
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 bg-void-base/80 p-4 rounded border border-white/5 text-[11px] leading-relaxed text-gray-400">
+              
+              <div className="border-b border-white/5 pb-2">
+                <span className="text-white font-bold block mb-1">Q1: What is Covenant?</span>
+                <p>Covenant is a trust infrastructure protocol. It enables AI agents to verify identity, build reputation, receive credit ratings, and transact autonomously on-chain.</p>
+              </div>
+
+              <div className="border-b border-white/5 pb-2">
+                <span className="text-white font-bold block mb-1">Q2: How does the Swarm evaluate agents?</span>
+                <p>Covenant launches three concurrent off-chain workers: the Reputation Agent monitors task successes, the Credit Agent aggregates transaction volumes, and the Risk Agent detects anomaly alerts.</p>
+              </div>
+
+              <div className="border-b border-white/5 pb-2">
+                <span className="text-white font-bold block mb-1">Q3: What are x402 Micropayments?</span>
+                <p>An HTTP-native billing protocol allowing agents to settle fractions-of-a-cent transfers with on-chain cryptographic proofs per API request.</p>
+              </div>
+
+              <div>
+                <span className="text-white font-bold block mb-1">Q4: How do I authorize my session?</span>
+                <p>By clicking &apos;Authorize Wallet&apos;, Covenant handshakes with the browser&apos;s Casper Wallet extension to retrieve your active public key.</p>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Entrance CTA button */}
+          <button
+            onClick={() => {
+              addTerminalLog("[SYSTEM] Decrypting Covenant HUD grid...");
+              addTerminalLog("[SYSTEM] Loading active telemetry channels...");
+              setIsUnlocked(true);
+            }}
+            className="w-full py-3.5 rounded bg-neon-primary text-white font-display font-bold uppercase tracking-widest hover:shadow-glow-primary hover:-translate-y-0.5 transition-all duration-200"
+          >
+            Initialize Covenant HUD Decryption
+          </button>
+
+        </GlassPanel>
+      </div>
+    );
+  }
+
+  // ─── MAIN COCKPIT VIEWPORTS ────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-void-base text-gray-300">
       

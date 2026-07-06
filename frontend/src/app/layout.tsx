@@ -57,11 +57,12 @@ export default function RootLayout({
             </main>
 
             {/* Persistent Tactical Footer */}
+            {/* FIXED: Removed raw underscores from footer labels */}
             <footer className="w-full border-t border-white/5 py-4 px-8 bg-void-base/80 backdrop-blur-md">
               <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-[10px] font-mono text-gray-600 gap-2">
-                <span>SYSTEM_PROTOCOL: COVENANT_CORE_V1.1.0</span>
-                <span>ANCHORED_BY: CASPER_TESTNET</span>
-                <span>STATUS: OPERATIONAL_GRID</span>
+                <span>System Protocol: Covenant Core v1.1.0</span>
+                <span>Anchored By: Casper Testnet</span>
+                <span>Status: Operational Grid</span>
               </div>
             </footer>
 
