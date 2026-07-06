@@ -11,7 +11,8 @@ import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
 import CovenantLogo from "@/components/CovenantLogo";
 import CasperEcosystemLogo from "@/components/CasperEcosystemLogo";
-import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Plus, Minus, Disc } from "lucide-react";
+import { voiceEngine, NarratorType } from "@/utils/voiceEngine"; // FIXED: Re-added missing voiceEngine imports
+import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Volume2, VolumeX } from "lucide-react";
 
 // Declare global window extensions to clear TypeScript compiler warnings
 declare global {
@@ -34,6 +35,10 @@ export default function DashboardPage() {
 
   // FAQ Accordion Active Index Tracker
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  // FIXED: Re-added missing narrator voice state variables
+  const [narrator, setNarrator] = useState<NarratorType>("female");
+  const [isMuted, setIsMuted] = useState(false);
 
   // Mobile Drawer Toggle States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -105,7 +110,10 @@ export default function DashboardPage() {
     },
   ]);
 
-  // FIXED: High-performance Javascript Audio Synthesis Engine (no file loading required)
+  // FIXED: Scoped style dictionary inside the component function block to ensure full access to decryptionProgress state
+  const progressStyle = { width: `${decryptionProgress}%` };
+
+  // High-performance Javascript Audio Synthesis Engine (no file loading required)
   const playSynthSound = (type: "click" | "sweep") => {
     if (typeof window === "undefined") return;
     try {
@@ -119,7 +127,6 @@ export default function DashboardPage() {
       gain.connect(ctx.destination);
 
       if (type === "click") {
-        // High-pitched tactical digital chirp
         osc.type = "sine";
         osc.frequency.setValueAtTime(900, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.1);
@@ -128,7 +135,6 @@ export default function DashboardPage() {
         osc.start();
         osc.stop(ctx.currentTime + 0.1);
       } else if (type === "sweep") {
-        // Low-frequency military grid sweep
         osc.type = "triangle";
         osc.frequency.setValueAtTime(120, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.45);
@@ -142,7 +148,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Helper to retrieve the active Casper Wallet provider (v2.x or v1.x)
   const getCasperProvider = () => {
     if (typeof window === "undefined") return null;
     if (window.CasperWalletProvider) return window.CasperWalletProvider();
@@ -174,6 +179,9 @@ export default function DashboardPage() {
           setWalletQuery(pubKey);
           setRegWallet(pubKey);
           setRegOwner(pubKey);
+          
+          voiceEngine.speak("Operator authorized. Key connected.", { echo: false, rate: 1.05 });
+          
           addTerminalLog(`[SYSTEM_CONNECT] Wallet authorized successfully. Address: ${pubKey}`);
           fetchAgentProfile(pubKey);
         }
@@ -320,6 +328,9 @@ export default function DashboardPage() {
         description: regDesc,
       });
       setRegSuccess(`Agent ID "${regName}" has been established successfully on Casper.`);
+      
+      voiceEngine.speak("Identity verified on-chain. Covenant ID established.", { echo: false, rate: 1.05 });
+
       addTerminalLog(`[IDENTITY_WRITE] Successfully registered on-chain. Initialized baseline metrics (500/1000).`);
       setWalletQuery(regWallet);
       fetchAgentProfile(regWallet);
@@ -333,6 +344,8 @@ export default function DashboardPage() {
   const handleSignTransaction = async (txHash: string) => {
     setIsSwarmOpen(false);
     if (!swarmTarget) return;
+
+    voiceEngine.speak("Swarm clearance granted. Micropayment settled on-chain.", { echo: true, rate: 1.0 });
 
     addTerminalLog(`[CovenantPay_SENDER] Triggering HTTP-native x402 pay-per-request API key settlement...`);
     addTerminalLog(`[CovenantPay_SUCCESS] Confirmed payment receipt on-chain: ${txHash.substring(0, 16)}...`);
@@ -391,31 +404,66 @@ export default function DashboardPage() {
         if (prev >= 100) {
           clearInterval(interval);
           playSynthSound("sweep");
-          sessionStorage.setItem("covenant_hud_unlocked", "true"); // FIXED: Write to sessionStorage to persist state on reload
+          sessionStorage.setItem("covenant_hud_unlocked", "true");
           setIsDecrypting(false);
           setIsUnlocked(true);
           return 100;
         }
-        return prev + 4; // Progress step increments
+        return prev + 4;
       });
     }, 100);
   };
 
+  // Speaks the central ecosystem pitch dynamically based on narrator toggle state
+  const speakNarrative = () => {
+    const pitchText = 
+      "System handshake completed. Welcome to Covenant, the trust infrastructure layer for autonomous AI agents on Casper. " +
+      "In the emerging machine economy, sovereign AI agents own wallets, trade assets, and execute tasks. But autonomous economies require trust. " +
+      "Covenant provides this trust layer through verifiable identity, dynamic reputation tracking, and creditworthiness scoring. " +
+      "Initialize decryption to access the cockpit.";
+
+    voiceEngine.setMute(isMuted);
+    voiceEngine.setNarrator(narrator);
+    voiceEngine.speak(pitchText, { echo: true });
+  };
+
+  // Handle narrator type updates
+  const handleNarratorToggle = (type: NarratorType) => {
+    playSynthSound("click");
+    setNarrator(type);
+    voiceEngine.setNarrator(type);
+    setTimeout(speakNarrative, 150);
+  };
+
+  // Handle global mute toggling
+  const handleMuteToggle = (status: boolean) => {
+    playSynthSound("click");
+    setIsMuted(status);
+    voiceEngine.setMute(status);
+    if (!status) {
+      setTimeout(speakNarrative, 150);
+    }
+  };
+
   useEffect(() => {
-    // FIXED: Check session persistence on load to bypass gateway if already unlocked in active tab session
     if (typeof window !== "undefined") {
       const unlocked = sessionStorage.getItem("covenant_hud_unlocked");
       if (unlocked === "true") {
         setIsUnlocked(true);
+      } else {
+        setTimeout(speakNarrative, 1500);
       }
     }
 
     fetchAgentProfile(walletQuery);
     loadLedger();
     checkWalletConnection();
-  }, []);
 
-  // Static FAQ Q&A mappings
+    return () => {
+      voiceEngine.stop();
+    };
+  }, [narrator, isMuted]);
+
   const faqData = [
     { q: "What is Covenant Protocol?", a: "Covenant is a trust infrastructure layer that establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents on the Casper Network." },
     { q: "How does the Swarm evaluate agentic nodes?", a: "Covenant launches three concurrent off-chain workers: the Reputation Agent monitors task success, the Credit Agent aggregates transaction volume densities, and the Risk Agent analyzes behavior profiles to isolate threats." },
@@ -426,7 +474,7 @@ export default function DashboardPage() {
   // ─── GATEWAY ENTRY PORTAL INTERFACE (With Interactive Q&A and sound) ────────
   if (!isUnlocked) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs select-none">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs">
         <GlassPanel className="w-full max-w-2xl p-6 sm:p-10 space-y-8" glowColor="primary">
           
           {/* Logo Headers */}
@@ -451,26 +499,61 @@ export default function DashboardPage() {
                 <span className="text-2xl font-black font-display text-white tracking-wider block">{decryptionProgress}%</span>
               </div>
               <div className="max-w-xs mx-auto h-[1px] bg-white/5 relative">
-                <div className="absolute top-0 left-0 bottom-0 bg-neon-secondary transition-all" style={{ width: `${decryptionProgress}%` }} />
+                {/* FIXED: progressStyle is now correctly accessible in local component scope */}
+                <div className="absolute top-0 left-0 bottom-0 bg-neon-secondary transition-all" style={progressStyle} />
               </div>
             </div>
           ) : (
             <React.Fragment>
-              <div className="space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#ff7a00]/10 border border-[#ff7a00]/30 text-[9px] font-bold text-[#ff7a00] tracking-widest uppercase">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00] animate-pulse" />
-                  Ecosystem Gateway
-                </span>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#ff7a00]/10 border border-[#ff7a00]/30 text-[9px] font-bold text-[#ff7a00] tracking-widest uppercase">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00] animate-pulse" />
+                    Ecosystem Gateway
+                  </span>
+
+                  {/* NARRATOR CONTROL BUTTONS PANEL */}
+                  <div className="flex items-center gap-2 bg-void-base border border-white/5 p-1 rounded-md text-[9px] font-bold text-gray-500">
+                    <button
+                      type="button"
+                      onClick={() => handleNarratorToggle("female")}
+                      className={`px-2 py-1 rounded transition-all ${
+                        narrator === "female" ? "bg-void-elevated text-neon-primary" : "hover:text-white"
+                      }`}
+                    >
+                      FEMALE_AI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNarratorToggle("male")}
+                      className={`px-2 py-1 rounded transition-all ${
+                        narrator === "male" ? "bg-void-elevated text-neon-secondary" : "hover:text-white"
+                      }`}
+                    >
+                      MALE_AI
+                    </button>
+                    <span className="text-gray-700">|</span>
+                    <button
+                      type="button"
+                      onClick={() => handleMuteToggle(!isMuted)}
+                      className="px-2 py-1 rounded hover:text-white"
+                      title={isMuted ? "Unmute Spoken Narrative" : "Mute Spoken Narrative"}
+                    >
+                      {isMuted ? <VolumeX className="w-3.5 h-3.5 text-status-alert" /> : <Volume2 className="w-3.5 h-3.5 text-status-success animate-pulse" />}
+                    </button>
+                  </div>
+                </div>
+
                 <p className="text-gray-400 leading-relaxed text-xs">
                   Covenant establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents operating on the Casper Network.
                 </p>
               </div>
 
-              {/* FIXED: High-fidelity interactive FAQ Accordion with dynamic +/- indicators and colors */}
+              {/* High-fidelity interactive FAQ Accordion with dynamic +/- indicators and colors */}
               <div className="space-y-4">
                 <h3 className="font-display font-bold uppercase tracking-wider text-white text-xs">Ecosystem FAQ & Specifications</h3>
                 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 bg-void-base/80 p-4 rounded border border-white/5">
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 bg-void-base/80 p-4 rounded border border-white/5">
                   {faqData.map((faq, i) => {
                     const isOpen = openFaqIndex === i;
                     return (
@@ -478,19 +561,12 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            playSynthSound("click");
                             setOpenFaqIndex(isOpen ? null : i);
                           }}
                           className="w-full flex items-center justify-between text-left py-1 text-[11px] font-bold text-gray-300 hover:text-white transition-colors"
                         >
-                          <span className="pr-4">{faq.q}</span>
-                          <span className="shrink-0 transition-all">
-                            {isOpen ? (
-                              <Minus className="w-3.5 h-3.5 text-neon-primary" />
-                            ) : (
-                              <Plus className="w-3.5 h-3.5 text-neon-secondary" />
-                            )}
-                          </span>
+                          <span className="text-white font-bold">{faq.q}</span>
+                          <span className="text-neon-secondary font-black">{isOpen ? "[-]" : "[+]"}</span>
                         </button>
                         
                         {/* Smooth sliding height accordion answers wrapper */}
@@ -584,20 +660,24 @@ export default function DashboardPage() {
               <div className="lg:col-span-5 space-y-6">
                 
                 {/* Profile Resolver */}
+                {/* FIXED: Added explicit 'id' and 'htmlFor' labels parameters to clear edge linter checks */}
                 <GlassPanel className="p-5 space-y-4" glowColor="secondary">
-                  <h3 className="font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary flex items-center gap-2">
+                  <label htmlFor="resolve_wallet_id" className="font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-neon-secondary animate-pulse" />
                     Resolve Agent Profile
-                  </h3>
+                  </label>
                   <div className="space-y-3 font-mono">
                     <input
+                      id="resolve_wallet_id"
                       type="text"
+                      title="Agent Public Key Input"
                       placeholder="Agent Public Key (Hex)..."
                       value={walletQuery}
                       onChange={(e) => setWalletQuery(e.target.value)}
                       className="w-full bg-void-base border border-white/10 rounded px-3.5 py-2.5 text-xs text-gray-200 outline-none focus:border-neon-secondary transition-colors"
                     />
                     <button
+                      type="button"
                       onClick={() => fetchAgentProfile(walletQuery)}
                       className="w-full py-2.5 rounded border border-neon-secondary/30 bg-neon-secondary/5 font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary hover:bg-neon-secondary/10 hover:shadow-glow-secondary transition-all"
                     >
@@ -608,6 +688,7 @@ export default function DashboardPage() {
                 </GlassPanel>
 
                 {/* Agent Onboarding Panel */}
+                {/* FIXED: Added explicit 'id' and 'htmlFor' labels parameters to clear edge linter checks */}
                 <GlassPanel className="p-5 space-y-4">
                   <h3 className="font-mono font-bold text-xs uppercase tracking-wider text-neon-primary">Onboard Covenant ID</h3>
                   <form onSubmit={handleRegister} className="space-y-4 font-mono">
@@ -624,9 +705,12 @@ export default function DashboardPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Casper Public Key</label>
+                        <label htmlFor="onboard_agent_wallet" className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Casper Public Key</label>
                         <input
+                          id="onboard_agent_wallet"
                           type="text"
+                          title="Onboard Wallet Input"
+                          placeholder="Enter Casper Public Key Hex..."
                           value={regWallet}
                           onChange={(e) => setRegWallet(e.target.value)}
                           className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 focus:border-neon-primary transition-colors outline-none"
@@ -634,17 +718,21 @@ export default function DashboardPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Capabilities Vectors</label>
+                        <label htmlFor="onboard_agent_caps" className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Capabilities Vectors</label>
                         <input
+                          id="onboard_agent_caps"
                           type="text"
+                          title="Onboard Capabilities Input"
+                          placeholder="e.g. data-feed, pricing"
                           value={regCapabilities}
                           onChange={(e) => setRegCapabilities(e.target.value)}
                           className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 focus:border-neon-primary transition-colors outline-none"
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Operational Description</label>
+                        <label htmlFor="onboard_agent_desc" className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Operational Description</label>
                         <textarea
+                          id="onboard_agent_desc"
                           placeholder="Operational metrics and boundaries..."
                           value={regDesc}
                           onChange={(e) => setRegDesc(e.target.value)}
@@ -769,13 +857,16 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               {/* MANUAL TRANSFER PANEL */}
+              {/* FIXED: Added explicit 'id' and 'htmlFor' labels parameters to clear edge linter checks */}
               <div className="lg:col-span-5 bg-void-surface border border-white/5 p-5 rounded-xl space-y-4 font-mono text-xs">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-neon-primary mb-2">Execute Ledger Transfer</h4>
                 <form onSubmit={handleTransfer} className="space-y-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Recipient Wallet</label>
+                    <label htmlFor="transfer_rec_wallet" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Recipient Wallet</label>
                     <input
+                      id="transfer_rec_wallet"
                       type="text"
+                      title="Transfer Recipient Input"
                       placeholder="01d36be4..."
                       value={transferRecipient}
                       onChange={(e) => setTransferRecipient(e.target.value)}
@@ -784,9 +875,11 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Value (CSPR)</label>
+                    <label htmlFor="transfer_cspr_val" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Value (CSPR)</label>
                     <input
+                      id="transfer_cspr_val"
                       type="number"
+                      title="Transfer Amount Input"
                       placeholder="10.0"
                       value={transferAmount}
                       onChange={(e) => setTransferAmount(e.target.value)}
@@ -795,9 +888,12 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Payment Memo</label>
+                    <label htmlFor="transfer_memo_text" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Payment Memo</label>
                     <input
+                      id="transfer_memo_text"
                       type="text"
+                      title="Transfer Memo Input"
+                      placeholder="Enter Memo..."
                       value={transferMemo}
                       onChange={(e) => setTransferMemo(e.target.value)}
                       className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
