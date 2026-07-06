@@ -11,13 +11,14 @@ import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
 import CovenantLogo from "@/components/CovenantLogo";
 import CasperEcosystemLogo from "@/components/CasperEcosystemLogo";
-import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Shield, ArrowRight } from "lucide-react";
+import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Plus, Minus, Disc } from "lucide-react";
 
-// Declare the global window interface extensions to clear TypeScript compiler warnings
+// Declare global window extensions to clear TypeScript compiler warnings
 declare global {
   interface Window {
     CasperWalletProvider?: any;
     casperWalletHelper?: any;
+    webkitAudioContext?: any;
   }
 }
 
@@ -26,8 +27,13 @@ type TabType = "identity" | "market" | "ledger" | "audits";
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>("identity");
 
-  // Gateway Access Control state
+  // Gateway Access Control & Cinematic Decryption States
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [decryptionProgress, setDecryptionProgress] = useState(0);
+
+  // FAQ Accordion Active Index Tracker
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Mobile Drawer Toggle States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -99,6 +105,43 @@ export default function DashboardPage() {
     },
   ]);
 
+  // FIXED: High-performance Javascript Audio Synthesis Engine (no file loading required)
+  const playSynthSound = (type: "click" | "sweep") => {
+    if (typeof window === "undefined") return;
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === "click") {
+        // High-pitched tactical digital chirp
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(900, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+      } else if (type === "sweep") {
+        // Low-frequency military grid sweep
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(120, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.45);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.45);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
+      }
+    } catch (e) {
+      console.warn("Audio synthesis block ignored by browser policies:", e);
+    }
+  };
+
   // Helper to retrieve the active Casper Wallet provider (v2.x or v1.x)
   const getCasperProvider = () => {
     if (typeof window === "undefined") return null;
@@ -107,6 +150,7 @@ export default function DashboardPage() {
     return null;
   };
 
+  // Connect to Casper Wallet browser extension natively
   const handleConnectWallet = async () => {
     const provider = getCasperProvider();
     if (!provider) {
@@ -142,6 +186,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Disconnect Casper Wallet
   const handleDisconnectWallet = async () => {
     const provider = getCasperProvider();
     if (provider) {
@@ -151,6 +196,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Check initial connection status on mount
   const checkWalletConnection = async () => {
     const provider = getCasperProvider();
     if (provider) {
@@ -334,16 +380,53 @@ export default function DashboardPage() {
     }
   };
 
+  // Trigger 3s simulated cinematic decryption progression
+  const handleDecryptionTrigger = () => {
+    playSynthSound("click");
+    setIsDecrypting(true);
+    setDecryptionProgress(0);
+
+    const interval = setInterval(() => {
+      setDecryptionProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          playSynthSound("sweep");
+          sessionStorage.setItem("covenant_hud_unlocked", "true"); // FIXED: Write to sessionStorage to persist state on reload
+          setIsDecrypting(false);
+          setIsUnlocked(true);
+          return 100;
+        }
+        return prev + 4; // Progress step increments
+      });
+    }, 100);
+  };
+
   useEffect(() => {
+    // FIXED: Check session persistence on load to bypass gateway if already unlocked in active tab session
+    if (typeof window !== "undefined") {
+      const unlocked = sessionStorage.getItem("covenant_hud_unlocked");
+      if (unlocked === "true") {
+        setIsUnlocked(true);
+      }
+    }
+
     fetchAgentProfile(walletQuery);
     loadLedger();
     checkWalletConnection();
   }, []);
 
-  // ─── GATEWAY ENTRY PORTAL INTERFACE ────────────────────────────────────────
+  // Static FAQ Q&A mappings
+  const faqData = [
+    { q: "What is Covenant Protocol?", a: "Covenant is a trust infrastructure layer that establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents on the Casper Network." },
+    { q: "How does the Swarm evaluate agentic nodes?", a: "Covenant launches three concurrent off-chain workers: the Reputation Agent monitors task success, the Credit Agent aggregates transaction volume densities, and the Risk Agent analyzes behavior profiles to isolate threats." },
+    { q: "What are x402 Micropayments?", a: "An HTTP-native billing standard designed for the machine-to-machine economy, allowing agents to settle fraction-of-a-cent transfers with on-chain cryptographic proofs per API gateway request." },
+    { q: "How do I authorize my session on mobile?", a: "To sign transactions on mobile, you must open the Covenant dApp URL directly inside the Web3 Dapp Browser of the mobile Casper Wallet App." }
+  ];
+
+  // ─── GATEWAY ENTRY PORTAL INTERFACE (With Interactive Q&A and sound) ────────
   if (!isUnlocked) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs">
+      <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs select-none">
         <GlassPanel className="w-full max-w-2xl p-6 sm:p-10 space-y-8" glowColor="primary">
           
           {/* Logo Headers */}
@@ -359,56 +442,81 @@ export default function DashboardPage() {
           </div>
 
           {/* System Vision Overview */}
-          <div className="space-y-3">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#ff7a00]/10 border border-[#ff7a00]/30 text-[9px] font-bold text-[#ff7a00] tracking-widest uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00] animate-pulse" />
-              Ecosystem Gateway
-            </span>
-            <p className="text-gray-400 leading-relaxed text-xs">
-              Covenant establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents operating on the Casper Network.
-            </p>
-          </div>
-
-          {/* FAQ Accordion Lists Section */}
-          <div className="space-y-4">
-            <h3 className="font-display font-bold uppercase tracking-wider text-white text-xs">Ecosystem FAQ & Specifications</h3>
-            
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 bg-void-base/80 p-4 rounded border border-white/5 text-[11px] leading-relaxed text-gray-400">
-              
-              <div className="border-b border-white/5 pb-2">
-                <span className="text-white font-bold block mb-1">Q1: What is Covenant?</span>
-                <p>Covenant is a trust infrastructure protocol. It enables AI agents to verify identity, build reputation, receive credit ratings, and transact autonomously on-chain.</p>
+          {isDecrypting ? (
+            // Cinematic Loading Screen
+            <div className="space-y-4 py-8 text-center">
+              <Cpu className="w-10 h-10 text-neon-secondary mx-auto animate-spin" />
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-neon-secondary uppercase tracking-widest block">Decrypting Core HUD Channels...</span>
+                <span className="text-2xl font-black font-display text-white tracking-wider block">{decryptionProgress}%</span>
               </div>
-
-              <div className="border-b border-white/5 pb-2">
-                <span className="text-white font-bold block mb-1">Q2: How does the Swarm evaluate agents?</span>
-                <p>Covenant launches three concurrent off-chain workers: the Reputation Agent monitors task successes, the Credit Agent aggregates transaction volumes, and the Risk Agent detects anomaly alerts.</p>
+              <div className="max-w-xs mx-auto h-[1px] bg-white/5 relative">
+                <div className="absolute top-0 left-0 bottom-0 bg-neon-secondary transition-all" style={{ width: `${decryptionProgress}%` }} />
               </div>
-
-              <div className="border-b border-white/5 pb-2">
-                <span className="text-white font-bold block mb-1">Q3: What are x402 Micropayments?</span>
-                <p>An HTTP-native billing protocol allowing agents to settle fractions-of-a-cent transfers with on-chain cryptographic proofs per API request.</p>
-              </div>
-
-              <div>
-                <span className="text-white font-bold block mb-1">Q4: How do I authorize my session?</span>
-                <p>By clicking &apos;Authorize Wallet&apos;, Covenant handshakes with the browser&apos;s Casper Wallet extension to retrieve your active public key.</p>
-              </div>
-
             </div>
-          </div>
+          ) : (
+            <React.Fragment>
+              <div className="space-y-3">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#ff7a00]/10 border border-[#ff7a00]/30 text-[9px] font-bold text-[#ff7a00] tracking-widest uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00] animate-pulse" />
+                  Ecosystem Gateway
+                </span>
+                <p className="text-gray-400 leading-relaxed text-xs">
+                  Covenant establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents operating on the Casper Network.
+                </p>
+              </div>
 
-          {/* Entrance CTA button */}
-          <button
-            onClick={() => {
-              addTerminalLog("[SYSTEM] Decrypting Covenant HUD grid...");
-              addTerminalLog("[SYSTEM] Loading active telemetry channels...");
-              setIsUnlocked(true);
-            }}
-            className="w-full py-3.5 rounded bg-neon-primary text-white font-display font-bold uppercase tracking-widest hover:shadow-glow-primary hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Initialize Covenant HUD Decryption
-          </button>
+              {/* FIXED: High-fidelity interactive FAQ Accordion with dynamic +/- indicators and colors */}
+              <div className="space-y-4">
+                <h3 className="font-display font-bold uppercase tracking-wider text-white text-xs">Ecosystem FAQ & Specifications</h3>
+                
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 bg-void-base/80 p-4 rounded border border-white/5">
+                  {faqData.map((faq, i) => {
+                    const isOpen = openFaqIndex === i;
+                    return (
+                      <div key={i} className="border-b border-white/5 pb-2 last:border-b-0 last:pb-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playSynthSound("click");
+                            setOpenFaqIndex(isOpen ? null : i);
+                          }}
+                          className="w-full flex items-center justify-between text-left py-1 text-[11px] font-bold text-gray-300 hover:text-white transition-colors"
+                        >
+                          <span className="pr-4">{faq.q}</span>
+                          <span className="shrink-0 transition-all">
+                            {isOpen ? (
+                              <Minus className="w-3.5 h-3.5 text-neon-primary" />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5 text-neon-secondary" />
+                            )}
+                          </span>
+                        </button>
+                        
+                        {/* Smooth sliding height accordion answers wrapper */}
+                        <div className={`overflow-hidden transition-all duration-300 ${
+                          isOpen ? "max-h-24 opacity-100 mt-2" : "max-h-0 opacity-0"
+                        }`}>
+                          <p className="text-[10px] text-gray-500 leading-relaxed pl-1">
+                            {faq.a}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Entrance CTA button */}
+              <button
+                type="button"
+                onClick={handleDecryptionTrigger}
+                className="w-full py-3.5 rounded bg-neon-primary text-white font-display font-bold uppercase tracking-widest hover:shadow-glow-primary hover:-translate-y-0.5 transition-all duration-200"
+              >
+                Initialize Covenant HUD Decryption
+              </button>
+            </React.Fragment>
+          )}
 
         </GlassPanel>
       </div>
