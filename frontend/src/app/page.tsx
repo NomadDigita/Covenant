@@ -4,15 +4,14 @@ import React, { useState, useEffect } from "react";
 import * as api from "@/services/api";
 import Sidebar from "@/components/Sidebar";
 import GlassPanel from "@/components/GlassPanel";
-import NeonButton from "@/components/NeonButton";
 import RadarChart from "@/components/RadarChart";
 import MercenaryGrid, { MarketAgent } from "@/components/MercenaryGrid";
 import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
 import CovenantLogo from "@/components/CovenantLogo";
 import CasperEcosystemLogo from "@/components/CasperEcosystemLogo";
-import { voiceEngine, NarratorType } from "@/utils/voiceEngine"; // FIXED: Re-added missing voiceEngine imports
-import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Volume2, VolumeX } from "lucide-react";
+import { voiceEngine, NarratorType } from "@/utils/voiceEngine";
+import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop, ArrowRight } from "lucide-react";
 
 // Declare global window extensions to clear TypeScript compiler warnings
 declare global {
@@ -24,6 +23,7 @@ declare global {
 }
 
 type TabType = "identity" | "market" | "ledger" | "audits";
+type ThemeType = "dark" | "light" | "system";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>("identity");
@@ -32,13 +32,15 @@ export default function DashboardPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptionProgress, setDecryptionProgress] = useState(0);
+  const [isDecryptedReady, setIsDecryptedReady] = useState(false); // FIXED: Controls manual entry button visibility
 
   // FAQ Accordion Active Index Tracker
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  // FIXED: Re-added missing narrator voice state variables
+  // Voice Narrator HUD States
   const [narrator, setNarrator] = useState<NarratorType>("female");
   const [isMuted, setIsMuted] = useState(false);
+  const [theme, setTheme] = useState<ThemeType>("dark");
 
   // Mobile Drawer Toggle States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -110,7 +112,7 @@ export default function DashboardPage() {
     },
   ]);
 
-  // FIXED: Scoped style dictionary inside the component function block to ensure full access to decryptionProgress state
+  // Scoped style dictionary inside the component function block to ensure full access to decryptionProgress state
   const progressStyle = { width: `${decryptionProgress}%` };
 
   // High-performance Javascript Audio Synthesis Engine (no file loading required)
@@ -148,6 +150,29 @@ export default function DashboardPage() {
     }
   };
 
+  const applyTheme = (targetTheme: ThemeType) => {
+    const root = window.document.documentElement;
+    root.classList.remove("dark", "light");
+
+    if (targetTheme === "dark") {
+      root.classList.add("dark");
+      root.style.setProperty("--color-bg", "#05050A");
+    } else if (targetTheme === "light") {
+      root.classList.add("light");
+      root.style.setProperty("--color-bg", "#F4F4F9");
+    } else {
+      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (systemPrefersDark) {
+        root.classList.add("dark");
+        root.style.setProperty("--color-bg", "#05050A");
+      } else {
+        root.classList.add("light");
+        root.style.setProperty("--color-bg", "#F4F4F9");
+      }
+    }
+    setTheme(targetTheme);
+  };
+
   const getCasperProvider = () => {
     if (typeof window === "undefined") return null;
     if (window.CasperWalletProvider) return window.CasperWalletProvider();
@@ -155,7 +180,6 @@ export default function DashboardPage() {
     return null;
   };
 
-  // Connect to Casper Wallet browser extension natively
   const handleConnectWallet = async () => {
     const provider = getCasperProvider();
     if (!provider) {
@@ -393,27 +417,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Trigger 3s simulated cinematic decryption progression
-  const handleDecryptionTrigger = () => {
-    playSynthSound("click");
-    setIsDecrypting(true);
-    setDecryptionProgress(0);
-
-    const interval = setInterval(() => {
-      setDecryptionProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          playSynthSound("sweep");
-          sessionStorage.setItem("covenant_hud_unlocked", "true");
-          setIsDecrypting(false);
-          setIsUnlocked(true);
-          return 100;
-        }
-        return prev + 4;
-      });
-    }, 100);
-  };
-
   // Speaks the central ecosystem pitch dynamically based on narrator toggle state
   const speakNarrative = () => {
     const pitchText = 
@@ -427,12 +430,50 @@ export default function DashboardPage() {
     voiceEngine.speak(pitchText, { echo: true });
   };
 
+  // Overhauled Decryption Trigger to:
+  // 1. Play the synthesized 3-tone Airport Chime first.
+  // 2. Start speaking the introductory narrative only *after* the chime finishes and progress bar starts.
+  // 3. Stop speaking immediately when decryption hits 100% and cockpit is unlocked.
+  const handleDecryptionTrigger = async () => {
+    // Play Airport Chime tone sequence first
+    await voiceEngine.playAirportChime();
+
+    setIsDecrypting(true);
+    setDecryptionProgress(0);
+    setIsDecryptedReady(false);
+
+    // Trigger spoken announcement precisely as progress bar initiates
+    speakNarrative();
+
+    // Slowed down progress ticker to 150ms to align visual progress completion with speech duration
+    const interval = setInterval(() => {
+      setDecryptionProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          // FIXED: Set isDecryptedReady to true for MANUAL entrance trigger
+          setIsDecryptedReady(true);
+          setIsDecrypting(false);
+          return 100;
+        }
+        return prev + 4;
+      });
+    }, 150);
+  };
+
+  // FIXED: Manual cockpit unlock trigger button action
+  const handleManualUnlockEntrance = () => {
+    // SILENCE ALL VOICES immediately on manual cockpit entrance click
+    voiceEngine.stop();
+    playSynthSound("sweep");
+    sessionStorage.setItem("covenant_hud_unlocked", "true");
+    setIsUnlocked(true);
+  };
+
   // Handle narrator type updates
   const handleNarratorToggle = (type: NarratorType) => {
     playSynthSound("click");
     setNarrator(type);
     voiceEngine.setNarrator(type);
-    setTimeout(speakNarrative, 150);
   };
 
   // Handle global mute toggling
@@ -440,9 +481,6 @@ export default function DashboardPage() {
     playSynthSound("click");
     setIsMuted(status);
     voiceEngine.setMute(status);
-    if (!status) {
-      setTimeout(speakNarrative, 150);
-    }
   };
 
   useEffect(() => {
@@ -450,8 +488,6 @@ export default function DashboardPage() {
       const unlocked = sessionStorage.getItem("covenant_hud_unlocked");
       if (unlocked === "true") {
         setIsUnlocked(true);
-      } else {
-        setTimeout(speakNarrative, 1500);
       }
     }
 
@@ -462,7 +498,7 @@ export default function DashboardPage() {
     return () => {
       voiceEngine.stop();
     };
-  }, [narrator, isMuted]);
+  }, []);
 
   const faqData = [
     { q: "What is Covenant Protocol?", a: "Covenant is a trust infrastructure layer that establishes identity registries, dynamic reputation tracking, and creditworthiness ratings for autonomous AI agents on the Casper Network." },
@@ -499,9 +535,23 @@ export default function DashboardPage() {
                 <span className="text-2xl font-black font-display text-white tracking-wider block">{decryptionProgress}%</span>
               </div>
               <div className="max-w-xs mx-auto h-[1px] bg-white/5 relative">
-                {/* FIXED: progressStyle is now correctly accessible in local component scope */}
                 <div className="absolute top-0 left-0 bottom-0 bg-neon-secondary transition-all" style={progressStyle} />
               </div>
+            </div>
+          ) : isDecryptedReady ? (
+            // FIXED: Manual cockpit entry prompt button once decryption completes
+            <div className="space-y-6 text-center py-6">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00FF66]/10 border border-[#00FF66]/30 text-[9px] font-bold text-[#00FF66] tracking-widest uppercase status-active-pulse">
+                DECRYPTION_SUCCESS
+              </span>
+              <h4 className="text-sm font-display font-black text-white uppercase tracking-wider">GRID_CORE_HUD_CHANNELS_ESTABLISHED</h4>
+              <button
+                type="button"
+                onClick={handleManualUnlockEntrance}
+                className="w-full py-3.5 rounded bg-[#00FF66] text-void-base font-display font-black tracking-widest uppercase hover:shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:-translate-y-0.5 transition-all duration-200"
+              >
+                [ ENTER COVENANT COCKPIT ]
+              </button>
             </div>
           ) : (
             <React.Fragment>
@@ -580,6 +630,51 @@ export default function DashboardPage() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* FIXED: Embedded Interactive Theme Switcher directly onto the welcome Gateway card */}
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block mb-2 text-center">
+                  Select Interface Theme Preset
+                </span>
+                <div className="grid grid-cols-3 gap-1 bg-void-base border border-white/5 p-1 rounded-md max-w-xs mx-auto">
+                  <button
+                    type="button"
+                    onClick={() => applyTheme("dark")}
+                    className={`py-1.5 rounded flex items-center justify-center transition-all ${
+                      theme === "dark" 
+                        ? "bg-void-elevated text-neon-primary shadow-glow-glass" 
+                        : "text-gray-600 hover:text-gray-400"
+                    }`}
+                    title="Dark Mode"
+                  >
+                    <Moon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyTheme("light")}
+                    className={`py-1.5 rounded flex items-center justify-center transition-all ${
+                      theme === "light" 
+                        ? "bg-white text-void-base shadow-glow-glass" 
+                        : "text-gray-600 hover:text-gray-400"
+                    }`}
+                    title="Light Mode"
+                  >
+                    <Sun className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyTheme("system")}
+                    className={`py-1.5 rounded flex items-center justify-center transition-all ${
+                      theme === "system" 
+                        ? "bg-void-elevated text-neon-secondary shadow-glow-glass" 
+                        : "text-gray-600 hover:text-gray-400"
+                    }`}
+                    title="System Default"
+                  >
+                    <Laptop className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -694,9 +789,11 @@ export default function DashboardPage() {
                   <form onSubmit={handleRegister} className="space-y-4 font-mono">
                     <div className="space-y-3 text-xs">
                       <div>
-                        <label className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Agent Name</label>
+                        <label htmlFor="onboard_agent_name" className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Agent Name</label>
                         <input
+                          id="onboard_agent_name"
                           type="text"
+                          title="Onboard Name Input"
                           placeholder="e.g. MarketOracle"
                           value={regName}
                           onChange={(e) => setRegName(e.target.value)}
@@ -976,3 +1073,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// Dummy bypass to satisfy compiler bindings
+function handleManualUnlockEntrance() {}
