@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── DARK THEME VARIABLES (DEFAULT) ──────────────────────────────────────── */
 :root {
   --color-void-base: #05050A;
   --color-void-surface: #0D0D14;
@@ -17,6 +18,14 @@
   --color-status-alert: #FF003C;
 }
 
+/* ─── LIGHT THEME OVERRIDES ────────────────────────────────────────────────── */
+.light {
+  --color-void-base: #F4F4F9;      /* Light tactical gray */
+  --color-void-surface: #FFFFFF;   /* Solid white card layers */
+  --color-void-elevated: #E2E2EA;  /* Dropdowns & elevated borders */
+}
+
+/* Base Body Layout and Grids */
 body {
   background-color: var(--color-void-base);
   /* Tactical military-grade HUD grid and nebula glows combined */
@@ -29,9 +38,20 @@ body {
   background-attachment: fixed;
   color: #F0F0F5;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* CRT Phosphor Scanline Overlay Effect */
+/* Light Mode Body and Grid adaptations */
+.light body {
+  color: #1A1A24;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(255, 85, 0, 0.02) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(0, 229, 255, 0.01) 0%, transparent 50%),
+    linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+}
+
+/* CRT Phosphor Scanline Overlay Effect (Dimmed in Light Mode) */
 .crt-scanlines {
   position: fixed;
   inset: 0;
@@ -39,9 +59,13 @@ body {
   pointer-events: none;
   background: linear-gradient(
     rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.15) 50%
+    rgba(0, 0, 0, 0.12) 50%
   );
   background-size: 100% 4px;
+}
+
+.light .crt-scanlines {
+  opacity: 0.25; /* Highly softened on light backgrounds */
 }
 
 /* Pulsing Status Dot Animations */
@@ -76,11 +100,15 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.02);
 }
 
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.06);
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-neon-secondary);
 }
 
-/* Hide defaults and standardize selections */
+/* Standardize selections */
 ::selection {
   background-color: var(--color-neon-primary);
   color: #05050A;

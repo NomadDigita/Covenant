@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // FIXED: Added class-based dark mode selector support
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,11 +10,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // The Void (Background Tones)
+        // The Void (Background Tones - adaptable in light/dark)
         void: {
-          base: "#05050A",     // Pitch black with 2% blue tint
-          surface: "#0D0D14",  // Base layer of glass panels
-          elevated: "#151520", // Dropdowns, modals, hover states
+          base: "var(--color-void-base, #05050A)",
+          surface: "var(--color-void-surface, #0D0D14)",
+          elevated: "var(--color-void-elevated, #151520)",
         },
         // Neon Emitters (Accents & Brand)
         neon: {
@@ -24,8 +26,8 @@ module.exports = {
         status: {
           idle: "#3A3A4A",       // Dim gray
           processing: "#F5A623", // Pulsing amber
-          success: "#00FF66",    // Neon green (payment pass, KYC valid)
-          alert: "#FF003C",      // Crimson red (anomaly alert, failed audit)
+          success: "#00FF66",    // Neon green
+          alert: "#FF003C",      // Crimson red
         }
       },
       boxShadow: {
