@@ -11,7 +11,7 @@ import {
   Laptop,
   CheckCircle2
 } from "lucide-react";
-import { CovenantLogo } from "./CovenantLogo";
+import { BrandingLockup } from "./BrandingLockup";
 
 type TabType = "identity" | "market" | "ledger" | "audits";
 type ThemeType = "dark" | "light" | "system";
@@ -34,7 +34,6 @@ export function Sidebar({
   onDisconnect,
 }: SidebarProps) {
   
-  // Theme Switching State Config
   const [theme, setTheme] = useState<ThemeType>("dark");
 
   const applyTheme = (targetTheme: ThemeType) => {
@@ -48,7 +47,6 @@ export function Sidebar({
       root.classList.add("light");
       root.style.setProperty("--color-bg", "#F4F4F9");
     } else {
-      // System/Device Settings Check
       const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       if (systemPrefersDark) {
         root.classList.add("dark");
@@ -62,11 +60,9 @@ export function Sidebar({
   };
 
   useEffect(() => {
-    // Default to dark mode on initial load
     applyTheme("dark");
   }, []);
 
-  // FIXED: Replaced underscores with clean display labels
   const navItems = [
     { id: "identity", label: "01 Covenant ID", icon: ShieldCheck },
     { id: "market", label: "02 Discovery", icon: Compass },
@@ -77,17 +73,24 @@ export function Sidebar({
   return (
     <aside className="w-[260px] min-h-screen bg-void-surface border-r border-white/5 flex flex-col justify-between p-6 font-mono relative shrink-0">
       
-      {/* 1. TOP BRANDING PANEL */}
+      {/* 1. TOP BRANDING PANEL WITH CO-BRANDED LOCKUP */}
       <div className="space-y-8">
-        <div className="flex items-center gap-3">
-          <CovenantLogo className="w-8 h-8 text-neon-primary" />
-          <div>
-            <h1 className="text-xs font-black tracking-widest text-white uppercase">Covenant HUD</h1>
-            <div className="flex items-center gap-1.5 mt-1 text-[9px] text-gray-500 font-bold uppercase">
+        <div>
+          {/* Render the new, animated co-branded lockup */}
+          <BrandingLockup size={22} />
+          
+          {/* FIXED: Dynamic heartbeat indicators depending on session authorized status */}
+          {connectedWallet ? (
+            <div className="flex items-center gap-1.5 mt-3 text-[9px] text-status-success font-black uppercase tracking-wider animate-[pulse_2s_infinite_ease-in-out]">
               <span className="w-1.5 h-1.5 rounded-full bg-status-success status-active-pulse" />
-              Casper Active
+              [ KEY_AUTHORIZED_OK: ! ]
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1.5 mt-3 text-[9px] text-status-alert font-black uppercase tracking-wider animate-[pulse_1.5s_infinite_ease-in-out]">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-alert status-active-pulse" />
+              [ KEY_UNAUTHORIZED: ⚠️ ]
+            </div>
+          )}
         </div>
 
         {/* 2. HUD NAV LINKS */}
@@ -119,13 +122,13 @@ export function Sidebar({
       <div className="space-y-6 pt-6 border-t border-white/5">
         
         {/* LIGHT / DARK / SYSTEM switcher panel */}
-        {/* FIXED: Removed underscores from text */}
         <div className="space-y-2">
           <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block">
             Interface Theme
           </span>
           <div className="grid grid-cols-3 gap-1 bg-void-base border border-white/5 p-1 rounded-md">
             <button
+              type="button"
               onClick={() => applyTheme("dark")}
               className={`py-1.5 rounded flex items-center justify-center transition-all ${
                 theme === "dark" 
@@ -137,6 +140,7 @@ export function Sidebar({
               <Moon className="w-3.5 h-3.5" />
             </button>
             <button
+              type="button"
               onClick={() => applyTheme("light")}
               className={`py-1.5 rounded flex items-center justify-center transition-all ${
                 theme === "light" 
@@ -148,6 +152,7 @@ export function Sidebar({
               <Sun className="w-3.5 h-3.5" />
             </button>
             <button
+              type="button"
               onClick={() => applyTheme("system")}
               className={`py-1.5 rounded flex items-center justify-center transition-all ${
                 theme === "system" 
@@ -162,7 +167,6 @@ export function Sidebar({
         </div>
 
         {/* WALLET WIDGET PANEL */}
-        {/* FIXED: Removed underscores from text */}
         <div className="space-y-2">
           <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block">
             Operator Keys
@@ -178,6 +182,7 @@ export function Sidebar({
                 </span>
               </div>
               <button
+                type="button"
                 onClick={onDisconnect}
                 className="w-full py-1.5 rounded border border-red-500/25 bg-red-950/10 text-[9px] font-bold text-red-400 hover:bg-red-950/20 transition-all duration-200"
               >
@@ -186,6 +191,7 @@ export function Sidebar({
             </div>
           ) : (
             <button
+              type="button"
               onClick={onConnect}
               disabled={isConnecting}
               className="w-full py-2 px-3 rounded border border-neon-primary/25 bg-neon-primary/5 text-[9px] font-bold uppercase tracking-wider text-neon-primary hover:bg-neon-primary/10 hover:shadow-glow-primary transition-all duration-300"

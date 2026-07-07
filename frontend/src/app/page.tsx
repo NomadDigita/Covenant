@@ -8,10 +8,9 @@ import RadarChart from "@/components/RadarChart";
 import MercenaryGrid, { MarketAgent } from "@/components/MercenaryGrid";
 import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
-import CovenantLogo from "@/components/CovenantLogo";
-import CasperEcosystemLogo from "@/components/CasperEcosystemLogo";
+import { BrandingLockup } from "@/components/BrandingLockup";
 import { voiceEngine, NarratorType } from "@/utils/voiceEngine";
-import { ShieldCheck, Scale, Coins, Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop, ArrowRight } from "lucide-react";
+import { Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop } from "lucide-react";
 
 // Declare global window extensions to clear TypeScript compiler warnings
 declare global {
@@ -32,7 +31,7 @@ export default function DashboardPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptionProgress, setDecryptionProgress] = useState(0);
-  const [isDecryptedReady, setIsDecryptedReady] = useState(false); // FIXED: Controls manual entry button visibility
+  const [isDecryptedReady, setIsDecryptedReady] = useState(false); // Controls manual entry button visibility
 
   // FAQ Accordion Active Index Tracker
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -112,7 +111,7 @@ export default function DashboardPage() {
     },
   ]);
 
-  // Scoped style dictionary inside the component function block to ensure full access to decryptionProgress state
+  // FIXED: Scoped style dictionary inside the component function block to ensure full access to decryptionProgress state
   const progressStyle = { width: `${decryptionProgress}%` };
 
   // High-performance Javascript Audio Synthesis Engine (no file loading required)
@@ -433,7 +432,7 @@ export default function DashboardPage() {
   // Overhauled Decryption Trigger to:
   // 1. Play the synthesized 3-tone Airport Chime first.
   // 2. Start speaking the introductory narrative only *after* the chime finishes and progress bar starts.
-  // 3. Stop speaking immediately when decryption hits 100% and cockpit is unlocked.
+  // 3. Play the high-fidelity synthesized "Starry Night" + "Golden Harmonics" background ambient loops!
   const handleDecryptionTrigger = async () => {
     // Play Airport Chime tone sequence first
     await voiceEngine.playAirportChime();
@@ -445,12 +444,15 @@ export default function DashboardPage() {
     // Trigger spoken announcement precisely as progress bar initiates
     speakNarrative();
 
+    // Trigger the mixed starry/harmonical sound background loop
+    voiceEngine.playStarryAmbientSound();
+
     // Slowed down progress ticker to 150ms to align visual progress completion with speech duration
     const interval = setInterval(() => {
       setDecryptionProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          // FIXED: Set isDecryptedReady to true for MANUAL entrance trigger
+          // Set isDecryptedReady to true for MANUAL entrance trigger
           setIsDecryptedReady(true);
           setIsDecrypting(false);
           return 100;
@@ -462,8 +464,10 @@ export default function DashboardPage() {
 
   // FIXED: Manual cockpit unlock trigger button action
   const handleManualUnlockEntrance = () => {
-    // SILENCE ALL VOICES immediately on manual cockpit entrance click
+    // SILENCE ALL VOICES & AMBIENT LOOPS immediately on manual cockpit entrance click
     voiceEngine.stop();
+    voiceEngine.stopStarryAmbient();
+    
     playSynthSound("sweep");
     sessionStorage.setItem("covenant_hud_unlocked", "true");
     setIsUnlocked(true);
@@ -497,6 +501,7 @@ export default function DashboardPage() {
 
     return () => {
       voiceEngine.stop();
+      voiceEngine.stopStarryAmbient();
     };
   }, []);
 
@@ -513,16 +518,9 @@ export default function DashboardPage() {
       <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs">
         <GlassPanel className="w-full max-w-2xl p-6 sm:p-10 space-y-8" glowColor="primary">
           
-          {/* Logo Headers */}
+          {/* Logo Headers - FIXED: Replaced old separate logo components with BrandingLockup */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-white/5 pb-6">
-            <div className="flex items-center gap-3">
-              <CovenantLogo size={40} className="text-neon-primary" />
-              <div>
-                <h1 className="text-sm font-display font-black text-white tracking-widest uppercase">Covenant</h1>
-                <span className="text-[9px] text-gray-500 tracking-wider">TRUST THROUGH CODE</span>
-              </div>
-            </div>
-            <CasperEcosystemLogo size={28} className="opacity-95" />
+            <BrandingLockup size={36} />
           </div>
 
           {/* System Vision Overview */}
@@ -539,12 +537,14 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : isDecryptedReady ? (
-            // FIXED: Manual cockpit entry prompt button once decryption completes
+            // FIXED: Responsive, unclipped Manual entrance trigger and professional text
             <div className="space-y-6 text-center py-6">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00FF66]/10 border border-[#00FF66]/30 text-[9px] font-bold text-[#00FF66] tracking-widest uppercase status-active-pulse">
                 DECRYPTION_SUCCESS
               </span>
-              <h4 className="text-sm font-display font-black text-white uppercase tracking-wider">GRID_CORE_HUD_CHANNELS_ESTABLISHED</h4>
+              <h4 className="text-xs font-display font-black text-white uppercase tracking-widest break-words max-w-xs mx-auto">
+                HUD Cockpit Restored
+              </h4>
               <button
                 type="button"
                 onClick={handleManualUnlockEntrance}
@@ -727,7 +727,7 @@ export default function DashboardPage() {
       {/* B. SCROLLABLE VIEWPORT CONTENT CONTAINER (Responsive width spacing) */}
       <div className="flex-1 flex flex-col min-h-screen pr-0 lg:pr-[320px] transition-all duration-300 w-full overflow-hidden">
         
-        {/* MOBILE UPPER NAVIGATION HEADER BAR */}
+        {/* MOBILE UPPER NAVIGATION HEADER BAR - FIXED: Replaced old separate logo components with BrandingLockup */}
         <header className="sticky top-0 z-20 w-full border-b border-white/5 bg-void-base/80 backdrop-blur-md py-4 px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -736,12 +736,10 @@ export default function DashboardPage() {
             >
               {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
-            <CovenantLogo className="w-6 h-6 text-neon-primary" />
-            <span className="font-display font-black text-xs text-white uppercase tracking-widest hidden sm:inline">Covenant Canvas</span>
+            <BrandingLockup size={24} />
           </div>
           
-          {/* CO-BRANDED CASPER LOCKUP */}
-          <CasperEcosystemLogo size={20} className="opacity-90 scale-90 sm:scale-100" />
+          <span className="font-display font-black text-xs text-white uppercase tracking-widest hidden sm:inline">Covenant Canvas</span>
         </header>
 
         {/* MAIN DATA VIEWPORTS AREA */}
@@ -789,11 +787,9 @@ export default function DashboardPage() {
                   <form onSubmit={handleRegister} className="space-y-4 font-mono">
                     <div className="space-y-3 text-xs">
                       <div>
-                        <label htmlFor="onboard_agent_name" className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Agent Name</label>
+                        <label className="block text-[9px] font-bold uppercase text-gray-500 tracking-wider mb-1">Agent Name</label>
                         <input
-                          id="onboard_agent_name"
                           type="text"
-                          title="Onboard Name Input"
                           placeholder="e.g. MarketOracle"
                           value={regName}
                           onChange={(e) => setRegName(e.target.value)}
@@ -1073,6 +1069,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-// Dummy bypass to satisfy compiler bindings
-function handleManualUnlockEntrance() {}
