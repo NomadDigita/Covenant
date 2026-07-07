@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"net/http"
+	"strings" // FIXED: Explicitly utilizing standard strings package
 
 	"backend/database"
 	"backend/models"
@@ -33,9 +34,9 @@ func ExecutePayment(c *gin.Context) {
 		return
 	}
 
-	// Clean address formats
-	payload.SenderWallet = stringsTrim(payload.SenderWallet)
-	payload.ReceiverWallet = stringsTrim(payload.ReceiverWallet)
+	// FIXED: Utilizing standard strings.TrimSpace to remove all hidden carriage returns (\r) and newlines (\n)
+	payload.SenderWallet = strings.TrimSpace(payload.SenderWallet)
+	payload.ReceiverWallet = strings.TrimSpace(payload.ReceiverWallet)
 
 	// Validate transaction uniqueness
 	var existingTx models.Transaction
