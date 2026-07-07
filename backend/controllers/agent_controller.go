@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings" // FIXED: Explicitly utilizing standard strings package
 	"time"
 
 	"backend/database"
@@ -30,13 +31,12 @@ type RegisterAgentPayload struct {
 
 // QueryCasperNodeRPC executes a JSON-RPC query against the Casper Testnet nodes
 func QueryCasperNodeRPC(method string, params interface{}) (map[string]interface{}, error) {
-	// Query official high-availability HTTPS load-balancer
 	nodeURL := "https://rpc.testnet.casper.network/rpc"
 	
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      1,
-		"method":  method,
+		"method":  "method",
 		"params":  params,
 	}
 
@@ -47,7 +47,7 @@ func QueryCasperNodeRPC(method string, params interface{}) (map[string]interface
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 5 * time.Second} // Safe timeout
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func VerifyOnChainRegistration(walletAddress string) bool {
 
 	// Query Casper contract dictionary storage key using state_get_dictionary_item
 	params := map[string]interface{}{
-		"state_root_hash": "", // Left empty for node to auto-fill latest block root
+		"state_root_hash": "",
 		"dictionary_identifier": map[string]interface{}{
 			"ContractNamedKey": map[string]interface{}{
 				"key":             contractHash,
@@ -118,10 +118,9 @@ func GetOnChainRating(contractHashEnvKey string, walletAddress string, defaultVa
 	response, err := QueryCasperNodeRPC("state_get_dictionary_item", params)
 	if err != nil {
 		log.Printf("[On-Chain Audit] Failed to fetch live score from %s: %v. Using local cache.", contractHashEnvKey, err)
-		return defaultVal // Graceful fallback to local cache on timeout
+		return defaultVal
 	}
 
-	// Parse the CLValue integer from the Casper RPC response structure
 	if result, ok := response["result"].(map[string]interface{}); ok {
 		if storedValue, ok := result["stored_value"].(map[string]interface{}); ok {
 			if clValue, ok := storedValue["CLValue"].(map[string]interface{}); ok {
@@ -137,7 +136,7 @@ func GetOnChainRating(contractHashEnvKey string, walletAddress string, defaultVa
 	return defaultVal
 }
 
-// RegisterAgent handles the creation of a new Agent ID profile on-chain mirroring
+// RegisterAgent handles the creation of a new Agent ID profile
 func RegisterAgent(c *gin.Context) {
 	var payload RegisterAgentPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -145,9 +144,9 @@ func RegisterAgent(c *gin.Context) {
 		return
 	}
 
-	// Clean inputs
-	payload.WalletAddress = stringsTrim(payload.WalletAddress)
-	payload.OwnerAddress = stringsTrim(payload.OwnerAddress)
+	// FIXED: Utilizing standard strings.TrimSpace to remove all hidden carriage returns (\r) and newlines (\n)
+	payload.WalletAddress = strings.TrimSpace(payload.WalletAddress)
+	payload.OwnerAddress = strings.TrimSpace(payload.OwnerAddress)
 
 	if payload.WalletAddress == "" || payload.Name == "" || payload.OwnerAddress == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet_address, name, and owner_address are required"})
@@ -240,7 +239,7 @@ func RegisterAgent(c *gin.Context) {
 	})
 }
 
-// GetAgentByWallet fetches an agent's complete profile, reputation details, and credit logs
+// GetAgentByWallet fetches an agent's complete profile
 func GetAgentByWallet(c *gin.Context) {
 	walletAddress := c.Param("wallet")
 	if walletAddress == "" {
@@ -261,13 +260,11 @@ func GetAgentByWallet(c *gin.Context) {
 	var reputation models.ReputationScore
 	database.DB.Where("agent_id = ?", agent.ID).First(&reputation)
 
-	// Fetch live, on-chain Reputation rating from the smart contract, fallback to local DB cache if offline
 	reputation.TrustScore = GetOnChainRating("CONTRACT_HASH_REPUTATION", walletAddress, reputation.TrustScore)
 
 	var credit models.CreditScore
 	database.DB.Where("agent_id = ?", agent.ID).First(&credit)
 
-	// Fetch live, on-chain Credit rating from the smart contract, fallback to local DB cache if offline
 	credit.CreditScore = GetOnChainRating("CONTRACT_HASH_CREDIT", walletAddress, credit.CreditScore)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -275,19 +272,4 @@ func GetAgentByWallet(c *gin.Context) {
 		"reputation": reputation,
 		"credit":     credit,
 	})
-}
-
-// Helper utility function for string trimming
-func stringsTrim(val string) string {
-	return uint8Trim(val)
-}
-
-func uint8Trim(val string) string {
-	for len(val) > 0 && val[0] == ' ' {
-		val = val[1:]
-	}
-	for len(val) > 0 && val[len(val)-1] == ' ' {
-		val = val[:len(val)-1]
-	}
-	return val
 }
