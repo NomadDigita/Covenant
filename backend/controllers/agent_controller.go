@@ -9,7 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings" // FIXED: Explicitly utilizing standard strings package
+	"strings"
 	"time"
 
 	"backend/database"
@@ -36,7 +36,7 @@ func QueryCasperNodeRPC(method string, params interface{}) (map[string]interface
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      1,
-		"method":  "method",
+		"method":  method,
 		"params":  params,
 	}
 
@@ -144,9 +144,14 @@ func RegisterAgent(c *gin.Context) {
 		return
 	}
 
-	// FIXED: Utilizing standard strings.TrimSpace to remove all hidden carriage returns (\r) and newlines (\n)
+	// FIXED: Standardize and sanitize inputs. Strip newlines, spaces, and duplicate prefixes
 	payload.WalletAddress = strings.TrimSpace(payload.WalletAddress)
+	payload.WalletAddress = strings.TrimPrefix(payload.WalletAddress, "account-hash-")
+	payload.WalletAddress = strings.TrimPrefix(payload.WalletAddress, "hash-")
+
 	payload.OwnerAddress = strings.TrimSpace(payload.OwnerAddress)
+	payload.OwnerAddress = strings.TrimPrefix(payload.OwnerAddress, "account-hash-")
+	payload.OwnerAddress = strings.TrimPrefix(payload.OwnerAddress, "hash-")
 
 	if payload.WalletAddress == "" || payload.Name == "" || payload.OwnerAddress == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet_address, name, and owner_address are required"})
