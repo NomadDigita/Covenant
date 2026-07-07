@@ -13,13 +13,15 @@ export function BrandingLockup({
   size = 32,
   hideText = false,
 }: BrandingLockupProps) {
-  const typoHeight = Math.round(size / 1.3);
+  // FIXED: Scaled down typography height to keep the lockup compact and prevent overlaps
+  const typoHeight = Math.round(size / 1.5);
 
   return (
-    <div className={`flex items-center gap-6 font-display select-none ${className}`}>
+    // FIXED: Reduced horizontal gap from gap-6 to gap-3 for mobile viewport stability
+    <div className={`flex items-center gap-3 font-display select-none ${className}`}>
       
       {/* ─── 1. COVENANT GOLD SHIELD (Gold Outer Shield & Floating Mini-Shields) ─── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 shrink-0">
         <svg
           width={size}
           height={size}
@@ -76,7 +78,7 @@ export function BrandingLockup({
             style={{
               fontSize: `${typoHeight}px`,
               lineHeight: `${size}px`,
-              animation: "color-shifter 5s infinite ease-in-out",
+              animation: "covenant-color-shifter 5s infinite ease-in-out",
             } as React.CSSProperties}
           >
             Covenant
@@ -85,10 +87,10 @@ export function BrandingLockup({
       </div>
 
       {/* Spacing Bridge */}
-      <span className="text-gray-800 hidden sm:inline">|</span>
+      <span className="text-gray-800 hidden sm:inline shrink-0">|</span>
 
       {/* ─── 2. CASPER RED NODE CLUSTER (With Twinkling Gold Stars) ─── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 shrink-0">
         <svg
           width={size}
           height={size}
@@ -140,19 +142,28 @@ export function BrandingLockup({
 
         {!hideText && (
           <span
-            style={{ fontSize: `${typoHeight}px`, lineHeight: `${size}px` }}
-            className="font-bold tracking-tight text-white dark:text-white light:text-[#0B1B95] select-none transition-colors duration-300"
+            className="font-bold tracking-tight text-white dark:text-white light:text-[#0B1B95]"
+            style={{
+              fontSize: `${typoHeight}px`,
+              lineHeight: `${size}px`,
+              animation: "casper-color-shifter 5s infinite ease-in-out",
+            } as React.CSSProperties}
           >
             Casper
           </span>
         )}
       </div>
 
-      {/* Global CSS Injector matching text color changes dynamically inside layouts */}
+      {/* Global CSS Keyframe Injector for BOTH logo text shifts */}
       <style jsx global>{`
-        @keyframes color-shifter {
+        @keyframes covenant-color-shifter {
           0%, 100% { color: #FF5500; text-shadow: 0 0 10px rgba(255,85,0,0.3); }
           50% { color: #FFD700; text-shadow: 0 0 15px rgba(255,215,0,0.5); }
+        }
+        /* FIXED: Added matching color shifting animations to Casper */
+        @keyframes casper-color-shifter {
+          0%, 100% { color: #FFFFFF; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
+          50% { color: #E3000F; text-shadow: 0 0 15px rgba(227,0,15,0.5); }
         }
       `}</style>
 

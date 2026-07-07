@@ -73,13 +73,13 @@ export function Sidebar({
   return (
     <aside className="w-[260px] min-h-screen bg-void-surface border-r border-white/5 flex flex-col justify-between p-6 font-mono relative shrink-0">
       
-      {/* 1. TOP BRANDING PANEL WITH CO-BRANDED LOCKUP */}
+      {/* 1. TOP BRANDING PANEL WITH COMPACT LOCKUP */}
       <div className="space-y-8">
-        <div>
-          {/* Render the new, animated co-branded lockup */}
-          <BrandingLockup size={22} />
+        <div className="max-w-full overflow-hidden">
+          {/* FIXED: Reduced scale size to 18 to ensure perfect fit inside 260px limits */}
+          <BrandingLockup size={18} />
           
-          {/* FIXED: Dynamic heartbeat indicators depending on session authorized status */}
+          {/* Dynamic heartbeat indicators depending on session authorized status */}
           {connectedWallet ? (
             <div className="flex items-center gap-1.5 mt-3 text-[9px] text-status-success font-black uppercase tracking-wider animate-[pulse_2s_infinite_ease-in-out]">
               <span className="w-1.5 h-1.5 rounded-full bg-status-success status-active-pulse" />
