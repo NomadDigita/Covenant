@@ -370,3 +370,56 @@ func GetAgentByWallet(c *gin.Context) {
 		"credit":     credit,
 	})
 }
+
+// GetAgents resolves all registered agents inside the PostgreSQL registry with unified score metrics
+func GetAgents(c *gin.Context) {
+	var agents []models.Agent
+	if err := database.DB.Order("created_at desc").Find(&agents).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error pulling profiles: " + err.Error()})
+		return
+	}
+
+	type RosterOutputItem struct {
+		ID            string   `json:"id"`
+		Name          string   `json:"name"`
+		WalletAddress string   `json:"wallet_address"`
+		OwnerAddress  string   `json:"owner_address"`
+		Capabilities  []string `json:"capabilities"`
+		Version       string   `json:"version"`
+		Description   string   `json:"description"`
+		TrustScore    int      `json:"trust_score"`
+		CreditScore   int      `json:"credit_score"`
+		SuccessRate   float64  `json:"success_rate"`
+		JobsCompleted int      `json:"jobs_completed"`
+	}
+
+	roster := make([]RosterOutputItem, 0, len(agents))
+
+	for _, agent := range agents {
+		var rep models.ReputationScore
+		database.DB.Where("agent_id = ?", agent.ID).First(&rep)
+
+		// Overwrite scoring models dynamically with actual live on-chain values
+		rep.TrustScore = GetOnChainRating("CONTRACT_HASH_REPUTATION", agent.WalletAddress, rep.TrustScore)
+
+		var credit models.CreditScore
+		database.DB.Where("agent_id = ?", agent.ID).First(&credit)
+		credit.CreditScore = GetOnChainRating("CONTRACT_HASH_CREDIT", agent.WalletAddress, credit.CreditScore)
+
+		roster = append(roster, RosterOutputItem{
+			ID:            agent.ID,
+			Name:          agent.Name,
+			WalletAddress: agent.WalletAddress,
+			OwnerAddress:  agent.OwnerAddress,
+			Capabilities:  agent.Capabilities,
+			Version:       agent.Version,
+			Description:   agent.Description,
+			TrustScore:    rep.TrustScore,
+			CreditScore:   credit.CreditScore,
+			SuccessRate:   rep.SuccessRate,
+			JobsCompleted: rep.JobsCompleted,
+		})
+	}
+
+	c.JSON(http.StatusOK, roster)
+}

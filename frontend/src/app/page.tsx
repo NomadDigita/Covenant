@@ -114,6 +114,34 @@ export default function DashboardPage() {
   // Scoped style dictionary inside the component function block to ensure full access to decryptionProgress state
   const progressStyle = { width: `${decryptionProgress}%` };
 
+  // Fetch and load agents catalog dynamically from standard database
+  const fetchAgentsCatalog = async () => {
+    try {
+      const data = await api.getAgents();
+      // Map database return values to frontend MarketAgent structures
+      const formatted: MarketAgent[] = data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        wallet_address: item.wallet_address,
+        owner_address: item.owner_address,
+        capabilities: item.capabilities || [],
+        version: item.version || "1.0.0",
+        description: item.description || "",
+        trust_score: item.trust_score,
+        credit_score: item.credit_score,
+        success_rate: item.success_rate,
+        jobs_completed: item.jobs_completed,
+      }));
+
+      // If active records exist in Supabase, load them dynamically
+      if (formatted.length > 0) {
+        setAgentsCatalog(formatted);
+      }
+    } catch (err) {
+      console.warn("API database catalog query returned empty or failed. Using cached static mock profiles:", err);
+    }
+  };
+
   // High-performance Javascript Audio Synthesis Engine (no file loading required)
   const playSynthSound = (type: "click" | "sweep") => {
     if (typeof window === "undefined") return;
@@ -359,21 +387,8 @@ export default function DashboardPage() {
 
       addTerminalLog(`[IDENTITY_WRITE] Successfully registered on-chain. Initialized baseline metrics (500/1000).`);
 
-      // DYNAMIC UPDATE: Append newly onboarded agent properties straight into standard visual state roster
-      const dynamicNewAgent: MarketAgent = {
-        id: regWallet,
-        name: regName,
-        wallet_address: regWallet,
-        owner_address: finalOwner,
-        capabilities: caps,
-        version: "1.0.0",
-        description: regDesc,
-        trust_score: 500,
-        credit_score: 500,
-        success_rate: 100.00,
-        jobs_completed: 0,
-      };
-      setAgentsCatalog((prev) => [...prev, dynamicNewAgent]);
+      // Refresh standard visual catalog list dynamically from postgres registry on successful execution
+      await fetchAgentsCatalog();
 
       setWalletQuery(regWallet);
       fetchAgentProfile(regWallet);
@@ -394,19 +409,8 @@ export default function DashboardPage() {
     addTerminalLog(`[CovenantPay_SUCCESS] Confirmed payment receipt on-chain: ${txHash.substring(0, 16)}...`);
     addTerminalLog(`[SWARM_ORCHESTRATOR] Triggering background agents to recalculate trust and credit metrics.`);
 
-    const updatedCatalog = agentsCatalog.map((a) => {
-      if (a.id === swarmTarget.id) {
-        return {
-          ...a,
-          trust_score: Math.min(1000, a.trust_score + 25),
-          credit_score: Math.min(1000, a.credit_score + 15),
-          jobs_completed: a.jobs_completed + 1,
-        };
-      }
-      return a;
-    });
-
-    setAgentsCatalog(updatedCatalog);
+    // Refresh dynamic metrics list from postgres database
+    await fetchAgentsCatalog();
     addTerminalLog(`[SWARM_WRITE] Success rate and volume densities recalculated successfully.`);
     
     setTimeout(() => {
@@ -513,6 +517,7 @@ export default function DashboardPage() {
     fetchAgentProfile(walletQuery);
     loadLedger();
     checkWalletConnection();
+    fetchAgentsCatalog(); // Query Supabase dynamically on component mount
 
     return () => {
       voiceEngine.stop();

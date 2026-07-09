@@ -59,6 +59,7 @@ func main() {
 		// --- CovenantID Identity Layer ---
 		v1.POST("/agents/register", controllers.RegisterAgent)
 		v1.GET("/agents/:wallet", controllers.GetAgentByWallet)
+		v1.GET("/agents", controllers.GetAgents) // NEW FLUID LIST ENDPOINT FOR LIVE DISCOVERY
 
 		// --- Covenant Market (Discovery & Jobs) ---
 		v1.POST("/marketplace/jobs", controllers.PostJob)
@@ -71,7 +72,6 @@ func main() {
 		v1.GET("/payments/history", controllers.GetPaymentHistory)
 
 		// --- CovenantAudit (AI Explanations & logs) ---
-		// Enforce HTTP-native x402 pay-per-request verification on the premium audit explanation generator endpoint
 		v1.POST("/audits/explain", middleware.X402PayPerRequest(), controllers.RequestAuditExplanation)
 		v1.GET("/audits/:agent_id", controllers.GetAuditLogsByAgent)
 	}

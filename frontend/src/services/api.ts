@@ -102,6 +102,16 @@ export async function getAgentByWallet(wallet: string): Promise<CompleteProfile>
   return res.json();
 }
 
+// GETAGENTS retrieves the complete joined roster of registered agents from standard Postgres database dynamically
+export async function getAgents(): Promise<any[]> {
+  const res = await fetch(`${BASE_URL}/agents`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to load registered agents catalog");
+  }
+  return res.json();
+}
+
 // ─── 2. MARKETPLACE LAYER CALLS (Covenant Market) ───────────────────────────
 
 export async function postJob(payload: {
@@ -194,7 +204,6 @@ export async function getPaymentHistory(): Promise<LedgerTx[]> {
 
 // ─── 4. AUDIT LAYER CALLS (CovenantAudit) ────────────────────────────────────
 
-// FIXED: Added headers block configuration to transmit dynamic payment proofs
 export async function requestAuditExplanation(
   payload: {
     agent_id: string;
