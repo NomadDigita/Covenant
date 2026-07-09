@@ -358,6 +358,23 @@ export default function DashboardPage() {
       voiceEngine.speak("Identity verified on-chain. Covenant ID established.", { echo: false, rate: 1.05 });
 
       addTerminalLog(`[IDENTITY_WRITE] Successfully registered on-chain. Initialized baseline metrics (500/1000).`);
+
+      // DYNAMIC UPDATE: Append newly onboarded agent properties straight into standard visual state roster
+      const dynamicNewAgent: MarketAgent = {
+        id: regWallet,
+        name: regName,
+        wallet_address: regWallet,
+        owner_address: finalOwner,
+        capabilities: caps,
+        version: "1.0.0",
+        description: regDesc,
+        trust_score: 500,
+        credit_score: 500,
+        success_rate: 100.00,
+        jobs_completed: 0,
+      };
+      setAgentsCatalog((prev) => [...prev, dynamicNewAgent]);
+
       setWalletQuery(regWallet);
       fetchAgentProfile(regWallet);
     } catch (err: any) {
@@ -736,7 +753,7 @@ export default function DashboardPage() {
                 {/* Profile Resolver */}
                 <GlassPanel className="p-4" glowColor="secondary">
                   <div className="space-y-4">
-                    <label htmlFor="resolver-wallet-input" className="block text-[9px] font-bold uppercase text-neon-secondary tracking-widest flex items-center gap-1.5">
+                    <label htmlFor="resolve_wallet_id" className="block text-[9px] font-bold uppercase text-neon-secondary tracking-widest flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-neon-secondary animate-pulse" />
                       Resolve Agent Profile
                     </label>
