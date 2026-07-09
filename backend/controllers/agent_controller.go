@@ -45,9 +45,8 @@ func isValidCasperAddress(addr string) bool {
 	clean = strings.TrimPrefix(clean, "hash-")
 	
 	length := len(clean)
-	// A valid Casper public key is 66 chars (starting with 01 or 02). 
-	// A valid Casper account hash or contract hash is exactly 64 chars.
-	if length != 64 && length != 66 {
+	// Account Hash = 64 chars, Ed25519 Key = 66 chars, Secp256k1 Key = 68 chars
+	if length != 64 && length != 66 && length != 68 {
 		return false
 	}
 	return hexRegex.MatchString(clean)
@@ -217,11 +216,11 @@ func RegisterAgent(c *gin.Context) {
 
 	// STRICT VALUE AND FORMAT VALIDATIONS
 	if !isValidCasperAddress(payload.WalletAddress) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid wallet_address: must be a valid 64 or 66 character hex standard Casper address"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid wallet_address: must be a valid 64, 66, or 68 character hex standard Casper address"})
 		return
 	}
 	if !isValidCasperAddress(payload.OwnerAddress) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid owner_address: must be a valid 64 or 66 character hex standard Casper address"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid owner_address: must be a valid 64, 66, or 68 character hex standard Casper address"})
 		return
 	}
 	if len(payload.Name) < 2 || len(payload.Name) > 100 || !nameRegex.MatchString(payload.Name) {
