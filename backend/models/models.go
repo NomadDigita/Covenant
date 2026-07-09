@@ -46,9 +46,9 @@ func (a TextArray) Value() (driver.Value, error) {
 // Agent represents the unique identity of an AI Agent (CovenantID)
 type Agent struct {
 	ID            string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	WalletAddress string    `gorm:"type:varchar(66);unique;not null;index" json:"wallet_address"`
+	WalletAddress string    `gorm:"type:varchar(70);unique;not null;index" json:"wallet_address"` // Expanded to support standard compressed Secp256k1 Keys
 	Name          string    `gorm:"type:varchar(100);not null" json:"name"`
-	OwnerAddress  string    `gorm:"type:varchar(66);not null" json:"owner_address"`
+	OwnerAddress  string    `gorm:"type:varchar(70);not null" json:"owner_address"` // Expanded to support standard compressed Secp256k1 Keys
 	Capabilities  TextArray `gorm:"type:text[]" json:"capabilities"`
 	Version       string    `gorm:"type:varchar(20);default:'1.0.0'" json:"version"`
 	Description   string    `gorm:"type:varchar(1000)" json:"description"` // Strictly bounded to prevent memory depletion DoS
@@ -99,7 +99,7 @@ type MarketplaceJob struct {
 	Description string     `gorm:"type:varchar(1000)" json:"description"` // Strictly bounded description
 	Budget      float64    `gorm:"type:numeric(20,9);not null;check:budget >= 0.0" json:"budget"`
 	Status      JobStatus  `gorm:"type:varchar(50);default:'open';index" json:"status"` // Changed to standard varchar to ensure migrations cross-compatibilities
-	TxHash      string     `gorm:"type:varchar(66)" json:"tx_hash,omitempty"`
+	TxHash      string     `gorm:"type:varchar(70)" json:"tx_hash,omitempty"`          // Expanded to support standard Casper transaction hashes containing custom prefixes
 	CreatedAt   time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
@@ -107,11 +107,11 @@ type MarketplaceJob struct {
 // Transaction represents real-time payments of agent-to-agent activity (CovenantPay)
 type Transaction struct {
 	ID             string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	SenderWallet   string    `gorm:"type:varchar(66);not null" json:"sender_wallet"`
-	ReceiverWallet string    `gorm:"type:varchar(66);not null" json:"receiver_wallet"`
+	SenderWallet   string    `gorm:"type:varchar(70);not null" json:"sender_wallet"`   // Expanded to support standard compressed Secp256k1 Keys
+	ReceiverWallet string    `gorm:"type:varchar(70);not null" json:"receiver_wallet"` // Expanded to support standard compressed Secp256k1 Keys
 	Amount         float64   `gorm:"type:numeric(20,9);not null;check:amount > 0.0" json:"amount"`
 	Memo           string    `gorm:"type:varchar(255)" json:"memo"`
-	TxHash         string    `gorm:"type:varchar(66);unique;index" json:"tx_hash"`
+	TxHash         string    `gorm:"type:varchar(70);unique;index" json:"tx_hash"` // Expanded to support standard Casper transaction hashes containing custom prefixes
 	Status         string    `gorm:"type:varchar(50);default:'pending'" json:"status"`
 	Timestamp      time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"timestamp"`
 }
