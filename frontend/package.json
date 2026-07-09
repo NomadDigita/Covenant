@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "casper-js-sdk": "^2.15.7",
+    "casper-js-sdk": "^5.0.12",
     "lucide-react": "^0.330.0",
     "next": "^15.5.18",
     "react": "^18.2.0",
