@@ -460,7 +460,7 @@ export default function DashboardPage() {
 
     try {
       // Build standard compliant Casper transaction deploy
-      const deployJson = buildPaymentDeploy(connectedWallet, paymentContractHash, paymentMotes);
+      const deployJson = buildOnChainPaymentDeploy(connectedWallet, paymentContractHash, paymentMotes);
       const deployString = JSON.stringify(deployJson);
 
       addTerminalLog(`[CovenantPay_SIGN] Requesting cryptographic validation from Casper Wallet extension...`);
@@ -468,7 +468,8 @@ export default function DashboardPage() {
       // Open standard wallet provider popup to request standard operator key signature
       const signatureResult = await provider.sign(deployString, connectedWallet);
       
-      if (!signatureResult || !signatureResult.cancelled) {
+      // FIXED: Corrected standard logic validation to proceed on standard successful signs (cancelled === false)
+      if (!signatureResult || signatureResult.cancelled) {
         addTerminalLog(`[CovenantPay_REJECT] Transaction signature cancelled by system operator.`);
         return;
       }
@@ -524,11 +525,6 @@ export default function DashboardPage() {
       console.error("Casper signatures pipeline failed: ", err);
       addTerminalLog(`[CovenantPay_ERROR] Signature handshakes aborted: ${err.message || err}`);
     }
-  };
-
-  // Helper bindings bypass (safeguarding TypeScript builds)
-  const buildPaymentDeploy = (wallet: string, hash: string, motes: number) => {
-    return buildOnChainPaymentDeploy(wallet, hash, motes);
   };
 
   // Manual Micropayment Transfer (CovenantPay)
