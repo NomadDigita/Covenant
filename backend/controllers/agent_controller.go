@@ -9,14 +9,23 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
 	"backend/database"
 	"backend/models"
+	"backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+)
+
+// Regex compilation for input sanitization
+var (
+	hexRegex    = regexp.MustCompile(`^[0-9a-fA-F]+$`)
+	nameRegex   = regexp.MustCompile(`^[a-zA-Z0-9_\-\s]+$`)
+	semverRegex = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
 )
 
 // RegisterAgentPayload defines the parameters required to register a new AI Agent
@@ -27,6 +36,21 @@ type RegisterAgentPayload struct {
 	Capabilities  []string `json:"capabilities"`
 	Version       string   `json:"version"`
 	Description   string   `json:"description"`
+}
+
+// isValidCasperAddress checks if the trimmed key represents a valid Casper Public Key or Account Hash
+func isValidCasperAddress(addr string) bool {
+	clean := strings.TrimSpace(addr)
+	clean = strings.TrimPrefix(clean, "account-hash-")
+	clean = strings.TrimPrefix(clean, "hash-")
+	
+	length := len(clean)
+	// A valid Casper public key is 66 chars (starting with 01 or 02). 
+	// A valid Casper account hash or contract hash is exactly 64 chars.
+	if length != 64 && length != 66 {
+		return false
+	}
+	return hexRegex.MatchString(clean)
 }
 
 // QueryCasperNodeRPC executes a JSON-RPC query against the Casper Testnet nodes
@@ -75,25 +99,42 @@ func VerifyOnChainRegistration(walletAddress string) bool {
 		return true // Fallback to allow database-only flow if hash is not set
 	}
 
+	// Clean and validate address structure
+	cleanAddress := strings.TrimSpace(walletAddress)
+	cleanAddress = strings.TrimPrefix(cleanAddress, "account-hash-")
+	cleanAddress = strings.TrimPrefix(cleanAddress, "hash-")
+
+	if !isValidCasperAddress(cleanAddress) {
+		log.Printf("[On-Chain Audit] Rejected invalid wallet format: %s", walletAddress)
+		return false
+	}
+
+	// Deriving correct 64-character BLAKE2b-256 Odra dictionary key
+	dictionaryKey, err := utils.ConvertAddressToDictionaryKey(cleanAddress)
+	if err != nil {
+		log.Printf("[On-Chain Audit] Failed to derive Odra dictionary key for wallet %s: %v", walletAddress, err)
+		return false
+	}
+
 	// Query Casper contract dictionary storage key using state_get_dictionary_item
 	params := map[string]interface{}{
 		"state_root_hash": "",
 		"dictionary_identifier": map[string]interface{}{
 			"ContractNamedKey": map[string]interface{}{
-				"key":             contractHash,
-				"dictionary_name": "profiles",
-				"dictionary_item_key": walletAddress,
+				"key":                 contractHash,
+				"dictionary_name":     "profiles",
+				"dictionary_item_key": dictionaryKey,
 			},
 		},
 	}
 
-	_, err := QueryCasperNodeRPC("state_get_dictionary_item", params)
+	_, err = QueryCasperNodeRPC("state_get_dictionary_item", params)
 	if err != nil {
-		log.Printf("[On-Chain Audit] Verification failed for wallet %s: %v", walletAddress, err)
+		log.Printf("[On-Chain Audit] Verification failed for wallet %s (dictionary_key: %s): %v", walletAddress, dictionaryKey, err)
 		return false
 	}
 
-	log.Printf("[On-Chain Audit] Verified on-chain AgentRegistry record for: %s", walletAddress)
+	log.Printf("[On-Chain Audit] Verified on-chain AgentRegistry record for: %s (dictionary_key: %s)", walletAddress, dictionaryKey)
 	return true
 }
 
@@ -104,20 +145,37 @@ func GetOnChainRating(contractHashEnvKey string, walletAddress string, defaultVa
 		return defaultVal
 	}
 
+	// Clean and validate address structure
+	cleanAddress := strings.TrimSpace(walletAddress)
+	cleanAddress = strings.TrimPrefix(cleanAddress, "account-hash-")
+	cleanAddress = strings.TrimPrefix(cleanAddress, "hash-")
+
+	if !isValidCasperAddress(cleanAddress) {
+		log.Printf("[On-Chain Audit] Rating rejected malformed wallet format: %s", walletAddress)
+		return defaultVal
+	}
+
+	// Derive the correct BLAKE2b-256 hash dictionary key expected by Odra structures on-chain
+	dictionaryKey, err := utils.ConvertAddressToDictionaryKey(cleanAddress)
+	if err != nil {
+		log.Printf("[On-Chain Audit] Failed to derive Odra dictionary key for wallet %s: %v. Using local cache fallback.", walletAddress, err)
+		return defaultVal
+	}
+
 	params := map[string]interface{}{
 		"state_root_hash": "",
 		"dictionary_identifier": map[string]interface{}{
 			"ContractNamedKey": map[string]interface{}{
-				"key":             contractHash,
-				"dictionary_name": "scores",
-				"dictionary_item_key": walletAddress,
+				"key":                 contractHash,
+				"dictionary_name":     "scores",
+				"dictionary_item_key": dictionaryKey,
 			},
 		},
 	}
 
 	response, err := QueryCasperNodeRPC("state_get_dictionary_item", params)
 	if err != nil {
-		log.Printf("[On-Chain Audit] Failed to fetch live score from %s: %v. Using local cache.", contractHashEnvKey, err)
+		log.Printf("[On-Chain Audit] Failed to fetch live score from %s: %v (dictionary_key: %s). Using local cache.", contractHashEnvKey, err, dictionaryKey)
 		return defaultVal
 	}
 
@@ -144,7 +202,7 @@ func RegisterAgent(c *gin.Context) {
 		return
 	}
 
-	// FIXED: Standardize and sanitize inputs. Strip newlines, spaces, and duplicate prefixes
+	// Standardize and sanitize inputs. Strip newlines, spaces, and duplicate prefixes
 	payload.WalletAddress = strings.TrimSpace(payload.WalletAddress)
 	payload.WalletAddress = strings.TrimPrefix(payload.WalletAddress, "account-hash-")
 	payload.WalletAddress = strings.TrimPrefix(payload.WalletAddress, "hash-")
@@ -153,9 +211,44 @@ func RegisterAgent(c *gin.Context) {
 	payload.OwnerAddress = strings.TrimPrefix(payload.OwnerAddress, "account-hash-")
 	payload.OwnerAddress = strings.TrimPrefix(payload.OwnerAddress, "hash-")
 
-	if payload.WalletAddress == "" || payload.Name == "" || payload.OwnerAddress == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet_address, name, and owner_address are required"})
+	payload.Name = strings.TrimSpace(payload.Name)
+	payload.Version = strings.TrimSpace(payload.Version)
+	payload.Description = strings.TrimSpace(payload.Description)
+
+	// STRICT VALUE AND FORMAT VALIDATIONS
+	if !isValidCasperAddress(payload.WalletAddress) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid wallet_address: must be a valid 64 or 66 character hex standard Casper address"})
 		return
+	}
+	if !isValidCasperAddress(payload.OwnerAddress) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid owner_address: must be a valid 64 or 66 character hex standard Casper address"})
+		return
+	}
+	if len(payload.Name) < 2 || len(payload.Name) > 100 || !nameRegex.MatchString(payload.Name) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid name: must be 2-100 characters and contain alphanumeric symbols, underscores, hyphens, or spaces"})
+		return
+	}
+	if payload.Version != "" && !semverRegex.MatchString(payload.Version) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid version: must follow standard semantic versioning rules (e.g. 1.0.0)"})
+		return
+	}
+	if len(payload.Description) > 1000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "description exceeds maximum allowed length of 1000 characters"})
+		return
+	}
+	if len(payload.Capabilities) > 15 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "capabilities list cannot contain more than 15 tags"})
+		return
+	}
+
+	// Validate individual capability elements
+	for idx, capVal := range payload.Capabilities {
+		trimmedCap := strings.TrimSpace(capVal)
+		if len(trimmedCap) < 2 || len(trimmedCap) > 50 || !nameRegex.MatchString(trimmedCap) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid capability at index %d: must be 2-50 alphanumeric characters", idx)})
+			return
+		}
+		payload.Capabilities[idx] = trimmedCap
 	}
 
 	// Verify that the Agent has registered their profile on-chain on Casper Testnet first

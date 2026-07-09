@@ -44,6 +44,18 @@ pub struct Withdrawal {
     pub amount: U512,
 }
 
+#[derive(odra::Event, PartialEq, Eq, Debug)]
+pub struct GovernorGranted {
+    pub admin: Address,
+    pub new_governor: Address,
+}
+
+#[derive(odra::Event, PartialEq, Eq, Debug)]
+pub struct GovernorRevoked {
+    pub admin: Address,
+    pub revoked_governor: Address,
+}
+
 // ─── DATA STRUCTURES ─────────────────────────────────────────────────────────
 
 #[derive(odra::OdraType)]
@@ -77,6 +89,15 @@ impl AgentRegistry {
     pub fn init(&mut self) {}
 
     pub fn register_agent(&mut self, name: String, capabilities: Vec<String>, version: String) {
+        // STRICT METADATA VALUE AND STORAGE LENGTH SAFEGUARDS
+        assert!(name.len() >= 2 && name.len() <= 100, "Registration failed: name must be between 2 and 100 characters.");
+        assert!(capabilities.len() <= 10, "Registration failed: capability tag list cannot contain more than 10 entries.");
+        assert!(version.len() <= 20, "Registration failed: version identifier cannot exceed 20 characters.");
+
+        for cap in capabilities.iter() {
+            assert!(cap.len() >= 2 && cap.len() <= 50, "Registration failed: capability string size limits exceeded.");
+        }
+
         let caller = self.env().caller();
         let timestamp = self.env().get_block_time();
 
@@ -107,7 +128,7 @@ impl AgentRegistry {
 #[odra::module]
 pub struct ReputationContract {
     scores: Mapping<Address, u32>,
-    governor: Var<Address>,
+    governors: Mapping<Address, bool>,
 }
 
 #[odra::module]
@@ -115,7 +136,11 @@ impl ReputationContract {
     #[odra(init)]
     pub fn init(&mut self) {
         let caller = self.env().caller();
-        self.governor.set(caller);
+        self.governors.set(&caller, true);
+    }
+
+    pub fn is_governor(&self, address: Address) -> bool {
+        self.governors.get(&address).unwrap_or(false)
     }
 
     pub fn get_score(&self, agent: Address) -> u32 {
@@ -124,11 +149,10 @@ impl ReputationContract {
 
     pub fn update_score(&mut self, agent: Address, new_score: u32) {
         let caller = self.env().caller();
-        let env = self.env();
-        let current_governor = self.governor.get().unwrap_or_revert(&env);
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
 
-        assert_eq!(caller, current_governor, "Only Governor can adjust trust scores.");
-        assert!(new_score <= 1000, "Trust score cannot exceed 1000.");
+        assert!(is_auth, "Only authorized Governors can adjust trust scores.");
+        assert!(new_score <= 1000, "Trust score bounds violation: cannot exceed 1000.");
 
         self.scores.set(&agent, new_score);
 
@@ -139,12 +163,31 @@ impl ReputationContract {
         });
     }
 
-    pub fn change_governor(&mut self, new_governor: Address) {
+    pub fn grant_governor(&mut self, new_governor: Address) {
         let caller = self.env().caller();
-        let env = self.env();
-        let current_governor = self.governor.get().unwrap_or_revert(&env);
-        assert_eq!(caller, current_governor, "Only Governor can transfer ownership.");
-        self.governor.set(new_governor);
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Only existing Governors can grant governance roles.");
+        
+        self.governors.set(&new_governor, true);
+
+        self.env().emit_event(GovernorGranted {
+            admin: caller,
+            new_governor,
+        });
+    }
+
+    pub fn revoke_governor(&mut self, target_governor: Address) {
+        let caller = self.env().caller();
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Only existing Governors can revoke governance roles.");
+        assert_ne!(caller, target_governor, "Self-revocation prohibited to prevent governance lockouts.");
+
+        self.governors.set(&target_governor, false);
+
+        self.env().emit_event(GovernorRevoked {
+            admin: caller,
+            revoked_governor: target_governor,
+        });
     }
 }
 
@@ -153,7 +196,7 @@ impl ReputationContract {
 #[odra::module]
 pub struct CreditContract {
     credit_scores: Mapping<Address, u32>,
-    governor: Var<Address>,
+    governors: Mapping<Address, bool>,
 }
 
 #[odra::module]
@@ -161,7 +204,11 @@ impl CreditContract {
     #[odra(init)]
     pub fn init(&mut self) {
         let caller = self.env().caller();
-        self.governor.set(caller);
+        self.governors.set(&caller, true);
+    }
+
+    pub fn is_governor(&self, address: Address) -> bool {
+        self.governors.get(&address).unwrap_or(false)
     }
 
     pub fn get_credit_score(&self, agent: Address) -> u32 {
@@ -170,11 +217,10 @@ impl CreditContract {
 
     pub fn update_credit(&mut self, agent: Address, new_score: u32) {
         let caller = self.env().caller();
-        let env = self.env();
-        let current_governor = self.governor.get().unwrap_or_revert(&env);
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
 
-        assert_eq!(caller, current_governor, "Only Governor can adjust credit scores.");
-        assert!(new_score <= 1000, "Credit score cannot exceed 1000.");
+        assert!(is_auth, "Only authorized Governors can adjust credit scores.");
+        assert!(new_score <= 1000, "Credit score bounds violation: cannot exceed 1000.");
 
         self.credit_scores.set(&agent, new_score);
 
@@ -185,12 +231,31 @@ impl CreditContract {
         });
     }
 
-    pub fn change_governor_credit(&mut self, new_governor: Address) {
+    pub fn grant_governor_credit(&mut self, new_governor: Address) {
         let caller = self.env().caller();
-        let env = self.env();
-        let current_governor = self.governor.get().unwrap_or_revert(&env);
-        assert_eq!(caller, current_governor, "Only Governor can transfer ownership.");
-        self.governor.set(new_governor);
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Only existing Governors can grant governance roles.");
+        
+        self.governors.set(&new_governor, true);
+
+        self.env().emit_event(GovernorGranted {
+            admin: caller,
+            new_governor,
+        });
+    }
+
+    pub fn revoke_governor_credit(&mut self, target_governor: Address) {
+        let caller = self.env().caller();
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Only existing Governors can revoke governance roles.");
+        assert_ne!(caller, target_governor, "Self-revocation prohibited to prevent governance lockouts.");
+
+        self.governors.set(&target_governor, false);
+
+        self.env().emit_event(GovernorRevoked {
+            admin: caller,
+            revoked_governor: target_governor,
+        });
     }
 }
 

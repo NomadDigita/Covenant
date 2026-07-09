@@ -44,10 +44,11 @@ func ConnectDatabase() {
 		log.Fatalf("[Database Error] SQL adapter extraction failed: %v", err)
 	}
 
-	// Safe resource bounds for Supabase Free/Pro Tier limitations
-	sqlDB.SetMaxIdleConns(5)
-	sqlDB.SetMaxOpenConns(20)
-	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	// HARDENED CONNECTION BOUNDS FOR TRANSACTION-MODE PGBOUNCER (Supabase)
+	sqlDB.SetMaxIdleConns(2)                  // Min warm connections (reduced to prevent PgBouncer warm allocations)
+	sqlDB.SetMaxOpenConns(15)                 // Max concurrent pooled sockets to avoid pool exhaustion
+	sqlDB.SetConnMaxLifetime(3 * time.Minute) // Force clean connection recycling to stay under PgBouncer's timeout
+	sqlDB.SetConnMaxIdleTime(1 * time.Minute) // Proactively close connection sockets left idle for too long
 
-	log.Println("[Database] Connection pool established safely over PgBouncer.")
+	log.Println("[Database] Connection pool established and optimized safely over PgBouncer.")
 }

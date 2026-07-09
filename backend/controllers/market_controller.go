@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"backend/database"
@@ -9,6 +11,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+)
+
+// Regex compile targets for UUID, transaction hashes, and titles
+var (
+	uuidRegex   = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	txHashRegex = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
 )
 
 // PostJobPayload defines parameters for creating a job contract
@@ -28,7 +36,20 @@ type AssignJobPayload struct {
 // CompleteJobPayload defines parameters for finalizing a job contract
 type CompleteJobPayload struct {
 	JobID  string `json:"job_id" binding:"required"`
-	TxHash string `json:"tx_hash"` // On-chain settlement transaction hash
+	TxHash string `json:"tx_hash" binding:"required"` // On-chain settlement transaction hash is mandatory for stabilization
+}
+
+// isValidUUID verifies standard UUID format to prevent database query crashes
+func isValidUUID(id string) bool {
+	return uuidRegex.MatchString(id)
+}
+
+// cleanTxHash strips common prefixes and checks if it conforms to Casper standard 32-byte hex deploy hashes
+func cleanTxHash(hash string) (string, bool) {
+	clean := strings.TrimSpace(hash)
+	clean = strings.TrimPrefix(clean, "0x")
+	clean = strings.TrimPrefix(clean, "hash-")
+	return clean, txHashRegex.MatchString(clean)
 }
 
 // PostJob publishes a new job on Covenant Market
@@ -39,10 +60,39 @@ func PostJob(c *gin.Context) {
 		return
 	}
 
+	// Input Sanitization
+	payload.CreatorAddress = strings.TrimSpace(payload.CreatorAddress)
+	payload.CreatorAddress = strings.TrimPrefix(payload.CreatorAddress, "account-hash-")
+	payload.CreatorAddress = strings.TrimPrefix(payload.CreatorAddress, "hash-")
+	payload.Title = strings.TrimSpace(payload.Title)
+	payload.Description = strings.TrimSpace(payload.Description)
+
+	// STRICT BUSINESS BOUNDARY CHECKS
+	if !isValidCasperAddress(payload.CreatorAddress) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid creator_address format: must be valid 64 or 66 character standard Casper key"})
+		return
+	}
+	if len(payload.Title) < 5 || len(payload.Title) > 255 || !nameRegex.MatchString(payload.Title) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid title: must be 5-255 characters and contain only alphanumeric symbols, underscores, hyphens, or spaces"})
+		return
+	}
+	if len(payload.Description) > 1000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "description exceeds maximum allowed limit of 1000 characters"})
+		return
+	}
+	if payload.Budget <= 0.0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid budget: must be greater than zero CSPR"})
+		return
+	}
+	if payload.Budget > 100000000.0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid budget: exceeds protocol threshold parameters"})
+		return
+	}
+
 	// Resolve creator agent
 	var creator models.Agent
 	if err := database.DB.Where("wallet_address = ?", payload.CreatorAddress).First(&creator).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Creator agent profile not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Creator agent profile not found in registration database"})
 		return
 	}
 
@@ -55,7 +105,7 @@ func PostJob(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&job).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post job: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write job posting to marketplace: " + err.Error()})
 		return
 	}
 
@@ -74,10 +124,26 @@ func AssignJob(c *gin.Context) {
 		return
 	}
 
+	// Input Sanitization
+	payload.JobID = strings.TrimSpace(payload.JobID)
+	payload.ProviderAddress = strings.TrimSpace(payload.ProviderAddress)
+	payload.ProviderAddress = strings.TrimPrefix(payload.ProviderAddress, "account-hash-")
+	payload.ProviderAddress = strings.TrimPrefix(payload.ProviderAddress, "hash-")
+
+	// STRICT BUSINESS BOUNDARY CHECKS
+	if !isValidUUID(payload.JobID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job_id: must be a valid UUID format"})
+		return
+	}
+	if !isValidCasperAddress(payload.ProviderAddress) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid provider_address format: must be valid 64 or 66 character standard Casper key"})
+		return
+	}
+
 	// Resolve provider agent
 	var provider models.Agent
 	if err := database.DB.Where("wallet_address = ?", payload.ProviderAddress).First(&provider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Provider agent profile not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Provider agent profile not registered"})
 		return
 	}
 
@@ -89,7 +155,13 @@ func AssignJob(c *gin.Context) {
 	}
 
 	if job.Status != models.JobStatusOpen {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Job is not in open status"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job assignment rejected: job is not in open status"})
+		return
+	}
+
+	// Ensure provider cannot hire themselves
+	if job.CreatorID == provider.ID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Self-hiring violation: Creator agent cannot execute their own marketplace jobs"})
 		return
 	}
 
@@ -98,7 +170,7 @@ func AssignJob(c *gin.Context) {
 	job.Status = models.JobStatusActive
 
 	if err := database.DB.Save(&job).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign job: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign provider to job: " + err.Error()})
 		return
 	}
 
@@ -117,6 +189,20 @@ func CompleteJob(c *gin.Context) {
 		return
 	}
 
+	// Input Sanitization
+	payload.JobID = strings.TrimSpace(payload.JobID)
+	cleanHash, isValidHash := cleanTxHash(payload.TxHash)
+
+	// STRICT BUSINESS BOUNDARY CHECKS
+	if !isValidUUID(payload.JobID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job_id: must be a valid UUID format"})
+		return
+	}
+	if !isValidHash {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tx_hash format: must be valid 64 character hex standard Casper deploy hash"})
+		return
+	}
+
 	// Fetch active job
 	var job models.MarketplaceJob
 	if err := database.DB.First(&job, "id = ?", payload.JobID).Error; err != nil {
@@ -125,24 +211,24 @@ func CompleteJob(c *gin.Context) {
 	}
 
 	if job.Status != models.JobStatusActive {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Job is not active; cannot be completed"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job completion rejected: target job state is not active"})
 		return
 	}
 
 	if job.ProviderID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No assigned provider linked to this job"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Hiring integrity error: No provider has been assigned to this active job"})
 		return
 	}
 
 	providerID := *job.ProviderID
 	now := time.Now()
 
-	// Execute metrics adjustment inside a database transaction
+	// Execute metrics adjustment inside a database transaction to preserve consistency under high concurrent load
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Close out the Marketplace Job
 		job.Status = models.JobStatusCompleted
 		job.CompletedAt = &now
-		job.TxHash = payload.TxHash
+		job.TxHash = cleanHash
 		if err := tx.Save(&job).Error; err != nil {
 			return err
 		}
@@ -160,20 +246,23 @@ func CompleteJob(c *gin.Context) {
 
 		// 3. Recalculate Reputation Scores
 		rep.JobsCompleted += 1
-		// Increment Trust Score by 25 points per successful task (cap at 1000)
 		newTrust := rep.TrustScore + 25
 		if newTrust > 1000 {
 			newTrust = 1000
 		}
 		rep.TrustScore = newTrust
-		rep.SuccessRate = 100.00 // Adjust dynamic rate logic if failures are added later
+		
+		// If success rate calculations are dynamic based on historical totals
+		if rep.JobsCompleted > 0 {
+			rep.SuccessRate = 100.00 // Default state unless failures are explicitly written by Risk Agent
+		}
+
 		if err := tx.Save(&rep).Error; err != nil {
 			return err
 		}
 
 		// 4. Recalculate Credit Score
 		credit.TransactionVolume += job.Budget
-		// Increment Credit Score by 15 points per completed trade (cap at 1000)
 		newCredit := credit.CreditScore + 15
 		if newCredit > 1000 {
 			newCredit = 1000
@@ -214,16 +303,20 @@ func CompleteJob(c *gin.Context) {
 
 // GetMarketplaceJobs retrieves all listed jobs by their status (e.g., active, open)
 func GetMarketplaceJobs(c *gin.Context) {
-	status := c.Query("status")
+	status := strings.ToLower(strings.TrimSpace(c.Query("status")))
 	var jobs []models.MarketplaceJob
 
 	query := database.DB
 	if status != "" {
+		if status != "open" && status != "active" && status != "completed" && status != "failed" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status query parameter: must be open, active, completed, or failed"})
+			return
+		}
 		query = query.Where("status = ?", status)
 	}
 
 	if err := query.Order("created_at desc").Find(&jobs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database retrieval failure: " + err.Error()})
 		return
 	}
 

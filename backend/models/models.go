@@ -45,15 +45,15 @@ func (a TextArray) Value() (driver.Value, error) {
 
 // Agent represents the unique identity of an AI Agent (CovenantID)
 type Agent struct {
-	ID           string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID            string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	WalletAddress string    `gorm:"type:varchar(66);unique;not null;index" json:"wallet_address"`
-	Name         string    `gorm:"type:varchar(100);not null" json:"name"`
-	OwnerAddress string    `gorm:"type:varchar(66);not null" json:"owner_address"`
-	Capabilities TextArray `gorm:"type:text[]" json:"capabilities"`
-	Version      string    `gorm:"type:varchar(20);default:'1.0.0'" json:"version"`
-	Description  string    `gorm:"type:text" json:"description"`
-	CreatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	Name          string    `gorm:"type:varchar(100);not null" json:"name"`
+	OwnerAddress  string    `gorm:"type:varchar(66);not null" json:"owner_address"`
+	Capabilities  TextArray `gorm:"type:text[]" json:"capabilities"`
+	Version       string    `gorm:"type:varchar(20);default:'1.0.0'" json:"version"`
+	Description   string    `gorm:"type:varchar(1000)" json:"description"` // Strictly bounded to prevent memory depletion DoS
+	CreatedAt     time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 // ReputationScore represents the cached Trust Score metrics for an agent (CovenantScore)
@@ -61,11 +61,11 @@ type ReputationScore struct {
 	ID              string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	AgentID         string    `gorm:"type:uuid;not null;unique;index" json:"agent_id"`
 	Agent           Agent     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE" json:"-"`
-	TrustScore      int       `gorm:"type:int;default:500" json:"trust_score"`
-	JobsCompleted   int       `gorm:"type:int;default:0" json:"jobs_completed"`
-	SuccessRate     float64   `gorm:"type:numeric(5,2);default:100.00" json:"success_rate"`
-	FailureRate     float64   `gorm:"type:numeric(5,2);default:0.00" json:"failure_rate"`
-	CommunityRating float64   `gorm:"type:numeric(3,2);default:5.00" json:"community_rating"`
+	TrustScore      int       `gorm:"type:int;default:500;check:trust_score >= 0 AND trust_score <= 1000" json:"trust_score"`
+	JobsCompleted   int       `gorm:"type:int;default:0;check:jobs_completed >= 0" json:"jobs_completed"`
+	SuccessRate     float64   `gorm:"type:numeric(5,2);default:100.00;check:success_rate >= 0.00 AND success_rate <= 100.00" json:"success_rate"`
+	FailureRate     float64   `gorm:"type:numeric(5,2);default:0.00;check:failure_rate >= 0.00 AND failure_rate <= 100.00" json:"failure_rate"`
+	CommunityRating float64   `gorm:"type:numeric(3,2);default:5.00;check:community_rating >= 0.00 AND community_rating <= 5.00" json:"community_rating"`
 	UpdatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
@@ -74,9 +74,9 @@ type CreditScore struct {
 	ID                 string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	AgentID            string    `gorm:"type:uuid;not null;unique;index" json:"agent_id"`
 	Agent              Agent     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE" json:"-"`
-	CreditScore        int       `gorm:"type:int;default:500" json:"credit_score"`
-	TransactionVolume  float64   `gorm:"type:numeric(20,9);default:0.000000000" json:"transaction_volume"`
-	PaymentReliability float64   `gorm:"type:numeric(5,2);default:100.00" json:"payment_reliability"`
+	CreditScore        int       `gorm:"type:int;default:500;check:credit_score >= 0 AND credit_score <= 1000" json:"credit_score"`
+	TransactionVolume  float64   `gorm:"type:numeric(20,9);default:0.000000000;check:transaction_volume >= 0.0" json:"transaction_volume"`
+	PaymentReliability float64   `gorm:"type:numeric(5,2);default:100.00;check:payment_reliability >= 0.00 AND payment_reliability <= 100.00" json:"payment_reliability"`
 	UpdatedAt          time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
@@ -96,9 +96,9 @@ type MarketplaceJob struct {
 	CreatorID   string     `gorm:"type:uuid;index" json:"creator_id"`
 	ProviderID  *string    `gorm:"type:uuid;index" json:"provider_id,omitempty"`
 	Title       string     `gorm:"type:varchar(255);not null" json:"title"`
-	Description string     `gorm:"type:text" json:"description"`
-	Budget      float64    `gorm:"type:numeric(20,9);not null" json:"budget"`
-	Status      JobStatus  `gorm:"type:job_status;default:'open';index" json:"status"`
+	Description string     `gorm:"type:varchar(1000)" json:"description"` // Strictly bounded description
+	Budget      float64    `gorm:"type:numeric(20,9);not null;check:budget >= 0.0" json:"budget"`
+	Status      JobStatus  `gorm:"type:varchar(50);default:'open';index" json:"status"` // Changed to standard varchar to ensure migrations cross-compatibilities
 	TxHash      string     `gorm:"type:varchar(66)" json:"tx_hash,omitempty"`
 	CreatedAt   time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
@@ -109,7 +109,7 @@ type Transaction struct {
 	ID             string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	SenderWallet   string    `gorm:"type:varchar(66);not null" json:"sender_wallet"`
 	ReceiverWallet string    `gorm:"type:varchar(66);not null" json:"receiver_wallet"`
-	Amount         float64   `gorm:"type:numeric(20,9);not null" json:"amount"`
+	Amount         float64   `gorm:"type:numeric(20,9);not null;check:amount > 0.0" json:"amount"`
 	Memo           string    `gorm:"type:varchar(255)" json:"memo"`
 	TxHash         string    `gorm:"type:varchar(66);unique;index" json:"tx_hash"`
 	Status         string    `gorm:"type:varchar(50);default:'pending'" json:"status"`
@@ -123,9 +123,9 @@ type AuditLog struct {
 	Agent               Agent     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE" json:"-"`
 	ActionType          string    `gorm:"type:varchar(100);not null" json:"action_type"`
 	DecisionStatus      string    `gorm:"type:varchar(50);not null" json:"decision_status"`
-	TrustScoreSnapshot  int       `gorm:"type:int;not null" json:"trust_score_snapshot"`
-	CreditScoreSnapshot int       `gorm:"type:int;not null" json:"credit_score_snapshot"`
+	TrustScoreSnapshot  int       `gorm:"type:int;not null;check:trust_score_snapshot >= 0 AND trust_score_snapshot <= 1000" json:"trust_score_snapshot"`
+	CreditScoreSnapshot int       `gorm:"type:int;not null;check:credit_score_snapshot >= 0 AND credit_score_snapshot <= 1000" json:"credit_score_snapshot"`
 	RiskLevel           string    `gorm:"type:varchar(20);not null" json:"risk_level"`
-	Justification       string    `gorm:"type:text;not null" json:"justification"`
+	Justification       string    `gorm:"type:varchar(2000);not null" json:"justification"` // Bounded to protect storage
 	CreatedAt           time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 }

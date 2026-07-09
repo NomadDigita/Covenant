@@ -6,13 +6,14 @@ interface SpeakOptions {
   voiceType?: NarratorType;
   rate?: number;  // Speed of narration
   pitch?: number; // Tone pitch
-  echo?: boolean; // Airport Reverb Cascade
+  echo?: boolean; // Reverb Cascade
 }
 
 class VoiceEngine {
   private isMuted: boolean = false;
   private activeNarrator: NarratorType = "female";
   private activeAmbientCtx: AudioContext | null = null;
+  private activeTimeouts: NodeJS.Timeout[] = [];
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -78,9 +79,13 @@ class VoiceEngine {
           osc.stop(ctx.currentTime + index * gap + duration);
         });
 
-        setTimeout(() => {
+        // Cleanly dispose of the AudioContext once the chime finishes to prevent memory leaks
+        setTimeout(async () => {
+          try {
+            await ctx.close();
+          } catch {}
           resolve();
-        }, 650);
+        }, 800);
 
       } catch (e) {
         console.warn("Chime ignored by browser audio policies:", e);
@@ -89,7 +94,7 @@ class VoiceEngine {
     });
   }
 
-  // FIXED: Synthesizes a real-time, mixed "Starry Night Hum" and "Gold Shield Harmonics" ambient backdrop
+  // Synthesizes a real-time, mixed "Starry Night Hum" and "Gold Shield Harmonics" ambient backdrop
   public playStarryAmbientSound() {
     if (typeof window === "undefined" || this.isMuted || this.activeAmbientCtx) return;
 
@@ -108,7 +113,6 @@ class VoiceEngine {
       
       starOsc.type = "sine";
       starOsc.frequency.setValueAtTime(1000, ctx.currentTime);
-      // Sweep frequency up and down slowly over 3 seconds
       starOsc.frequency.linearRampToValueAtTime(1150, ctx.currentTime + 1.5);
       starOsc.frequency.linearRampToValueAtTime(950, ctx.currentTime + 3.0);
 
@@ -131,7 +135,6 @@ class VoiceEngine {
 
       goldGain.gain.setValueAtTime(0.02, ctx.currentTime);
 
-      // Begin ambient loops
       starOsc.start();
       goldOsc1.start();
       goldOsc2.start();
@@ -147,8 +150,9 @@ class VoiceEngine {
       goldOsc1.stop(ctx.currentTime + 4.5);
       goldOsc2.stop(ctx.currentTime + 4.5);
 
-      setTimeout(() => {
-        this.activeAmbientCtx = null;
+      // Safely close the context to prevent thread build-up
+      setTimeout(async () => {
+        this.stopStarryAmbient();
       }, 4600);
 
     } catch (e) {
@@ -156,13 +160,14 @@ class VoiceEngine {
     }
   }
 
-  // Forces immediate stop on ambient loops
+  // Forces immediate stop and closure on ambient loops
   public stopStarryAmbient() {
     if (this.activeAmbientCtx) {
-      try {
-        this.activeAmbientCtx.close();
-      } catch {}
+      const targetCtx = this.activeAmbientCtx;
       this.activeAmbientCtx = null;
+      try {
+        targetCtx.close();
+      } catch {}
     }
   }
 
@@ -197,7 +202,7 @@ class VoiceEngine {
   public speak(text: string, options: SpeakOptions = {}) {
     if (typeof window === "undefined" || !window.speechSynthesis || this.isMuted) return;
 
-    window.speechSynthesis.cancel();
+    this.stop();
 
     const selectedVoiceType = options.voiceType || this.activeNarrator;
     const rate = options.rate ?? 0.92;
@@ -214,56 +219,44 @@ class VoiceEngine {
 
     window.speechSynthesis.speak(mainUtterance);
 
+    // Hardened Reverb Cascade: Reduced from 4 separate overlapping utterances to 2.
+    // This provides a smooth acoustic reverb effect while halving the rendering overhead.
     if (triggerEcho && !this.isMuted) {
-      setTimeout(() => {
+      const t1 = setTimeout(() => {
         if (window.speechSynthesis.speaking && !this.isMuted) {
           const echo1 = new SpeechSynthesisUtterance(text);
           if (systemVoice) echo1.voice = systemVoice;
           echo1.rate = rate;
           echo1.pitch = pitch - 0.05;
-          echo1.volume = 0.15;
+          echo1.volume = 0.12; // Adjusted to balance the reduced echo cascade
           window.speechSynthesis.speak(echo1);
         }
-      }, 160);
+      }, 180);
 
-      setTimeout(() => {
+      const t2 = setTimeout(() => {
         if (window.speechSynthesis.speaking && !this.isMuted) {
           const echo2 = new SpeechSynthesisUtterance(text);
           if (systemVoice) echo2.voice = systemVoice;
           echo2.rate = rate;
-          echo2.pitch = pitch - 0.1;
-          echo2.volume = 0.07;
+          echo2.pitch = pitch - 0.12;
+          echo2.volume = 0.04;
           window.speechSynthesis.speak(echo2);
         }
-      }, 320);
+      }, 360);
 
-      setTimeout(() => {
-        if (window.speechSynthesis.speaking && !this.isMuted) {
-          const echo3 = new SpeechSynthesisUtterance(text);
-          if (systemVoice) echo3.voice = systemVoice;
-          echo3.rate = rate;
-          echo3.pitch = pitch - 0.15;
-          echo3.volume = 0.03;
-          window.speechSynthesis.speak(echo3);
-        }
-      }, 480);
-
-      setTimeout(() => {
-        if (window.speechSynthesis.speaking && !this.isMuted) {
-          const echo4 = new SpeechSynthesisUtterance(text);
-          if (systemVoice) echo4.voice = systemVoice;
-          echo4.rate = rate;
-          echo4.pitch = pitch - 0.2;
-          echo4.volume = 0.01;
-          window.speechSynthesis.speak(echo4);
-        }
-      }, 640);
+      this.activeTimeouts.push(t1, t2);
     }
   }
 
   public stop() {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+    if (typeof window !== "undefined") {
+      // Clear active echo cascades
+      this.activeTimeouts.forEach((t) => clearTimeout(t));
+      this.activeTimeouts = [];
+
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     }
   }
 }

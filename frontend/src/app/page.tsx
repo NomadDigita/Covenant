@@ -8,7 +8,7 @@ import RadarChart from "@/components/RadarChart";
 import MercenaryGrid, { MarketAgent } from "@/components/MercenaryGrid";
 import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
-import { BrandingLockup } from "@/components/BrandingLockup"; // FIXED: Replaced static logo imports with our co-branded lockup
+import { BrandingLockup } from "@/components/BrandingLockup"; 
 import { voiceEngine, NarratorType } from "@/utils/voiceEngine";
 import { Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop } from "lucide-react";
 
@@ -130,22 +130,21 @@ export default function DashboardPage() {
       if (type === "click") {
         osc.type = "sine";
         osc.frequency.setValueAtTime(900, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.05, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 1.5);
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
       } else if (type === "sweep") {
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(120, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.45);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.45);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.45);
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(100, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.008, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
       }
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
     } catch (e) {
-      console.warn("Audio synthesis block ignored by browser policies:", e);
+      console.warn("Synthesizer audio blocked by security rules:", e);
     }
   };
 
@@ -340,7 +339,7 @@ export default function DashboardPage() {
     setRegSuccess(null);
     setError(null);
 
-    // FIXED: Automated Owner Fallback - If regOwner is empty, default owner_address to match regWallet!
+    // Automated Owner Fallback - If regOwner is empty, default owner_address to match regWallet!
     const finalOwner = regOwner || regWallet;
 
     addTerminalLog(`[IDENTITY_BROADCAST] Broadcasting AgentRegistry transaction for: ${regName}...`);
@@ -433,10 +432,7 @@ export default function DashboardPage() {
     voiceEngine.speak(pitchText, { echo: true });
   };
 
-  // Overhauled Decryption Trigger to:
-  // 1. Play the synthesized 3-tone Airport Chime first.
-  // 2. Start speaking the introductory narrative only *after* the chime finishes and progress bar starts.
-  // 3. Play the high-fidelity synthesized "Starry Night" + "Golden Harmonics" background ambient loops!
+  // Overhauled Decryption Trigger
   const handleDecryptionTrigger = async () => {
     // Play Airport Chime tone sequence first
     await voiceEngine.playAirportChime();
@@ -448,10 +444,9 @@ export default function DashboardPage() {
     // Trigger spoken announcement precisely as progress bar initiates
     speakNarrative();
 
-    // Trigger the mixed starry/harmonical sound background loop (Phase 21)
+    // Trigger the mixed starry/harmonical sound background loop
     voiceEngine.playStarryAmbientSound();
 
-    // Slowed down progress ticker to 150ms to align visual progress completion with speech duration
     const interval = setInterval(() => {
       setDecryptionProgress((prev) => {
         if (prev >= 100) {
@@ -466,7 +461,7 @@ export default function DashboardPage() {
     }, 150);
   };
 
-  // FIXED: Manual cockpit unlock trigger button action
+  // Stateful, sound-muting cockpit manual unlock click handler
   const handleManualUnlockEntrance = () => {
     // SILENCE ALL VOICES & AMBIENT LOOPS immediately on manual cockpit entrance click
     voiceEngine.stop();
@@ -480,12 +475,8 @@ export default function DashboardPage() {
   // Handle narrator type updates
   const handleNarratorToggle = (type: NarratorType) => {
     playSynthSound("click");
-    setNavigator(type); // Safe update
     setNarrator(type);
   };
-
-  // Helper bypass
-  const setNavigator = (type: string) => {};
 
   // Handle global mute toggling
   const handleMuteToggle = (status: boolean) => {
@@ -525,7 +516,7 @@ export default function DashboardPage() {
       <div className="min-h-screen w-full flex items-center justify-center p-4 relative z-10 font-mono text-xs">
         <GlassPanel className="w-full max-w-2xl p-6 sm:p-10 space-y-8" glowColor="primary">
           
-          {/* Logo Headers - FIXED: Replaced old separate logo components with BrandingLockup */}
+          {/* Logo Headers */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-white/5 pb-6">
             <BrandingLockup size={36} />
           </div>
@@ -544,7 +535,7 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : isDecryptedReady ? (
-            // FIXED: Responsive, unclipped Manual entrance trigger and professional text
+            // Responsive, unclipped Manual entrance trigger and professional text
             <div className="space-y-6 text-center py-6">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00FF66]/10 border border-[#00FF66]/30 text-[9px] font-bold text-[#00FF66] tracking-widest uppercase status-active-pulse">
                 DECRYPTION_SUCCESS
@@ -606,7 +597,7 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              {/* High-fidelity interactive FAQ Accordion with dynamic +/- indicators and colors */}
+              {/* FAQ Accordion with dynamic +/- indicators and colors */}
               <div className="space-y-4">
                 <h3 className="font-display font-bold uppercase tracking-wider text-white text-xs">Ecosystem FAQ & Specifications</h3>
                 
@@ -640,7 +631,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* FIXED: Embedded Interactive Theme Switcher directly onto the welcome Gateway card */}
+              {/* Embedded Interactive Theme Switcher directly onto the welcome Gateway card */}
               <div className="space-y-2 pt-2 border-t border-white/5">
                 <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block mb-2 text-center">
                   Select Interface Theme Preset
@@ -701,58 +692,41 @@ export default function DashboardPage() {
     );
   }
 
-  // ─── MAIN COCKPIT VIEWPORTS ────────────────────────────────────────────────
+  // ─── MAIN DASHBOARD INTERFACE VIEWPORT ───────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-void-base text-gray-300">
+    <div className="min-h-screen bg-void-base flex relative">
       
-      {/* A. RESPONSIVE SIDEBAR COLLAPSIBLE OVERLAY (Fixed 260px on PC, Slide-out on Mobile) */}
-      <div className={`
-        fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 md:relative md:translate-x-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}>
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            setIsSidebarOpen(false); // Auto close sidebar on mobile tap
-          }}
-          connectedWallet={connectedWallet}
-          isConnecting={isWalletConnecting}
-          onConnect={handleConnectWallet}
-          onDisconnect={handleDisconnectWallet}
-        />
-      </div>
+      {/* Dynamic heartbeat indicators and visual parameters overlay */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        connectedWallet={connectedWallet}
+        isConnecting={isWalletConnecting}
+        onConnect={handleConnectWallet}
+        onDisconnect={handleDisconnectWallet}
+      />
 
-      {/* Dimmed backdrop when sidebar is open on mobile */}
-      {isSidebarOpen && (
-        <div 
-          onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
-        />
-      )}
-
-      {/* B. SCROLLABLE VIEWPORT CONTENT CONTAINER (Responsive width spacing) */}
-      <div className="flex-1 flex flex-col min-h-screen pr-0 lg:pr-[320px] transition-all duration-300 w-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         
-        {/* MOBILE UPPER NAVIGATION HEADER BAR - FIXED: Replaced old separate logo components with BrandingLockup */}
-        <header className="sticky top-0 z-20 w-full border-b border-white/5 bg-void-base/80 backdrop-blur-md py-4 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Fixed Header */}
+        <header className="sticky top-0 z-40 backdrop-blur-xl bg-void-base/60 border-b border-white/5 py-4 px-6 sm:px-8 flex justify-between items-center">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1.5 rounded border border-white/10 text-neon-secondary hover:text-white md:hidden"
+              className="lg:hidden p-1.5 rounded border border-white/10 text-neon-secondary hover:text-white"
+              aria-label="Toggle Sidebar"
             >
               {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
             <BrandingLockup size={24} />
           </div>
-          
           <span className="font-display font-black text-xs text-white uppercase tracking-widest hidden sm:inline">Covenant Canvas</span>
         </header>
 
-        {/* MAIN DATA VIEWPORTS AREA */}
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl mx-auto w-full">
+        {/* Scrollable Main Area Grid */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto">
           
-          {/* TAB 1: IDENTITY VIEW (Cleanly adaptive columns) */}
+          {/* TAB 1: IDENTITY VIEW */}
           {activeTab === "identity" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
@@ -760,35 +734,35 @@ export default function DashboardPage() {
               <div className="lg:col-span-5 space-y-6">
                 
                 {/* Profile Resolver */}
-                {/* FIXED: Added explicit 'id' and 'htmlFor' labels parameters to clear edge linter checks */}
-                <GlassPanel className="p-5 space-y-4" glowColor="secondary">
-                  <label htmlFor="resolve_wallet_id" className="font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neon-secondary animate-pulse" />
-                    Resolve Agent Profile
-                  </label>
-                  <div className="space-y-3 font-mono">
-                    <input
-                      id="resolve_wallet_id"
-                      type="text"
-                      title="Agent Public Key Input"
-                      placeholder="Agent Public Key (Hex)..."
-                      value={walletQuery}
-                      onChange={(e) => setWalletQuery(e.target.value)}
-                      className="w-full bg-void-base border border-white/10 rounded px-3.5 py-2.5 text-xs text-gray-200 outline-none focus:border-neon-secondary transition-colors"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fetchAgentProfile(walletQuery)}
-                      className="w-full py-2.5 rounded border border-neon-secondary/30 bg-neon-secondary/5 font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary hover:bg-neon-secondary/10 hover:shadow-glow-secondary transition-all"
-                    >
-                      Execute Query
-                    </button>
+                <GlassPanel className="p-4" glowColor="secondary">
+                  <div className="space-y-4">
+                    <label htmlFor="resolver-wallet-input" className="block text-[9px] font-bold uppercase text-neon-secondary tracking-widest flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-neon-secondary animate-pulse" />
+                      Resolve Agent Profile
+                    </label>
+                    <div className="space-y-3 font-mono">
+                      <input
+                        id="resolve_wallet_id"
+                        type="text"
+                        title="Agent Public Key Input"
+                        placeholder="Agent Public Key (Hex)..."
+                        value={walletQuery}
+                        onChange={(e) => setWalletQuery(e.target.value)}
+                        className="w-full bg-void-base border border-white/10 rounded px-3.5 py-2.5 text-xs text-gray-200 outline-none focus:border-neon-secondary transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fetchAgentProfile(walletQuery)}
+                        className="w-full py-2.5 rounded border border-neon-secondary/30 bg-neon-secondary/5 font-mono font-bold text-xs uppercase tracking-wider text-neon-secondary hover:bg-neon-secondary/10 hover:shadow-glow-secondary transition-all"
+                      >
+                        Execute Query
+                      </button>
+                    </div>
                   </div>
-                  {error && <div className="p-3 bg-red-950/20 border border-red-500/20 text-red-400 rounded">{error}</div>}
+                  {error && <div className="p-3 bg-red-950/20 border border-red-500/20 text-red-400 rounded mt-3">{error}</div>}
                 </GlassPanel>
 
                 {/* Agent Onboarding Panel */}
-                {/* FIXED: Added explicit 'id' and 'htmlFor' labels parameters to clear edge linter checks */}
                 <GlassPanel className="p-5 space-y-4">
                   <h3 className="font-mono font-bold text-xs uppercase tracking-wider text-neon-primary">Onboard Covenant ID</h3>
                   <form onSubmit={handleRegister} className="space-y-4 font-mono">
@@ -848,7 +822,7 @@ export default function DashboardPage() {
                       Register Agent ID
                     </button>
                   </form>
-                  {regSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded">{regSuccess}</div>}
+                  {regSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded mt-3">{regSuccess}</div>}
                 </GlassPanel>
 
               </div>
@@ -936,7 +910,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 2: DISCOVERY VIEW (Fully adaptive Mercenary Grid) */}
+          {/* TAB 2: DISCOVERY VIEW */}
           {activeTab === "market" && (
             <MercenaryGrid
               agents={agentsCatalog}
@@ -957,7 +931,6 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               {/* MANUAL TRANSFER PANEL */}
-              {/* FIXED: Added explicit 'id' and 'htmlFor' labels parameters to clear edge linter checks */}
               <div className="lg:col-span-5 bg-void-surface border border-white/5 p-5 rounded-xl space-y-4 font-mono text-xs">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-neon-primary mb-2">Execute Ledger Transfer</h4>
                 <form onSubmit={handleTransfer} className="space-y-4">
@@ -1006,7 +979,7 @@ export default function DashboardPage() {
                     Execute Micropayment
                   </button>
                 </form>
-                {transferSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded">{transferSuccess}</div>}
+                {transferSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded mt-3">{transferSuccess}</div>}
               </div>
 
               {/* LOGGED TRANSACTION HISTORY */}
@@ -1059,7 +1032,7 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* C. COLLAPSIBLE CONSOLE LOGS TERMINAL (Visible on wide screens, collapses cleanly) */}
+      {/* C. COLLAPSIBLE CONSOLE LOGS TERMINAL */}
       <div className="hidden lg:block">
         <TerminalHUD activeWallet={connectedWallet || undefined} onchainLogs={terminalLogs} />
       </div>
@@ -1076,6 +1049,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-// Dummy bypass to satisfy compiler bindings
-function handleManualUnlockEntrance() {}

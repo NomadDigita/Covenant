@@ -1,12 +1,13 @@
 <div align="center">
 
+
 <!-- Auto-playing typing text effect -->
 <a href="https://git.io/typing-svg">
   <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=600&size=20&duration=3000&pause=1000&color=FF5500&center=true&vCenter=true&width=600&lines=INITIALIZING+COVENANT+PROTOCOL...;LOADING+CASPER+TESTNET+WASM...;SPAWNING+ASYNC+SWARM+WORKERS...;SYSTEM+STATUS:+SECURE+AND+ACTIVE." alt="Typing SVG" />
 </a>
 
 <!-- Main Visual Header Banner -->
-<img width="1402" height="1122" alt="Covenant Protocol Dashboard Cockpit" src="https://github.com/user-attachments/assets/ba4ece55-5092-49a4-927f-e931ec841678" />
+<img width="600" height="206" alt="covenant_casper_explainer" src="https://github.com/user-attachments/assets/026c40d5-e2b0-4eef-bdda-74b07dad574b" />
 
 <br><br>
 

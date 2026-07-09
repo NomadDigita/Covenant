@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -46,7 +47,7 @@ func X402PayPerRequest() gin.HandlerFunc {
 			c.JSON(http.StatusPaymentRequired, gin.H{
 				"error":          "Invalid or unconfirmed payment proof on-chain.",
 				"provided_proof": paymentProof,
-				"details":        err,
+				"details":        fmt.Sprintf("%v", err),
 			})
 			c.Abort()
 			return
@@ -60,7 +61,7 @@ func X402PayPerRequest() gin.HandlerFunc {
 
 // verifyOnChainPayment queries the Casper Testnet to verify the payment transaction
 func verifyOnChainPayment(txHash string, recipientContract string) (bool, error) {
-	// OPTIMIZED: Clean recipient hash format using unconditional TrimPrefix
+	// Clean and format target recipient hash
 	targetContractHex := strings.TrimSpace(recipientContract)
 	targetContractHex = strings.TrimPrefix(targetContractHex, "hash-")
 	targetContractHex = strings.ToLower(targetContractHex)
@@ -121,17 +122,25 @@ func verifyOnChainPayment(txHash string, recipientContract string) (bool, error)
 	}
 
 	var calledContractHex string
+	var args []interface{}
+
 	if storedContract, ok := session["StoredContractByHash"].(map[string]interface{}); ok {
 		if hashVal, ok := storedContract["hash"].(string); ok {
 			calledContractHex = hashVal
+		}
+		if argsVal, ok := storedContract["args"].([]interface{}); ok {
+			args = argsVal
 		}
 	} else if storedVersioned, ok := session["StoredVersionedContractByHash"].(map[string]interface{}); ok {
 		if hashVal, ok := storedVersioned["hash"].(string); ok {
 			calledContractHex = hashVal
 		}
+		if argsVal, ok := storedVersioned["args"].([]interface{}); ok {
+			args = argsVal
+		}
 	}
 
-	// OPTIMIZED: Sanitize prefixes from called hash using unconditional TrimPrefix
+	// Sanitize called hash
 	calledContractHex = strings.TrimSpace(calledContractHex)
 	calledContractHex = strings.TrimPrefix(calledContractHex, "hash-")
 	calledContractHex = strings.ToLower(calledContractHex)
@@ -140,7 +149,58 @@ func verifyOnChainPayment(txHash string, recipientContract string) (bool, error)
 		return false, fmt.Errorf("transaction called unexpected contract: expected %s, got %s", targetContractHex, calledContractHex)
 	}
 
-	// 2. Verify that the transaction execution succeeded on-chain
+	// 2. Hardened Payment Amount Validation
+	// Extract the runtime argument named "amount" or "attached_value" and verify mathematical value
+	var amountValidated bool = false
+	requiredMotesStr := "5000000000" // 5 CSPR = 5,000,000,000 motes
+	requiredMotes := new(big.Int)
+	requiredMotes.SetString(requiredMotesStr, 10)
+
+	for _, arg := range args {
+		argPair, ok := arg.([]interface{})
+		if !ok || len(argPair) < 2 {
+			continue
+		}
+		argName, ok := argPair[0].(string)
+		if !ok {
+			continue
+		}
+		if argName == "amount" || argName == "attached_value" {
+			clValue, ok := argPair[1].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			parsedVal, exists := clValue["parsed"]
+			if !exists {
+				continue
+			}
+			
+			// Casper CLValue representation formats U512 types as JSON standard string
+			if parsedStr, ok := parsedVal.(string); ok {
+				val := new(big.Int)
+				if _, success := val.SetString(parsedStr, 10); success {
+					if val.Cmp(requiredMotes) >= 0 {
+						amountValidated = true
+						break
+					}
+				}
+			} else if parsedFloat, ok := parsedVal.(float64); ok {
+				// Fallback if numerical type is parsed by standard driver
+				val := new(big.Float).SetFloat64(parsedFloat)
+				reqFloat := new(big.Float).SetInt(requiredMotes)
+				if val.Cmp(reqFloat) >= 0 {
+					amountValidated = true
+					break
+				}
+			}
+		}
+	}
+
+	if !amountValidated {
+		return false, fmt.Errorf("payment proof rejected: missing or insufficient attached value (required minimum: %s motes)", requiredMotesStr)
+	}
+
+	// 3. Verify that the transaction execution succeeded on-chain
 	executionResults, ok := result["execution_results"].([]interface{})
 	if !ok || len(executionResults) == 0 {
 		return false, fmt.Errorf("transaction has no on-chain execution blocks")
