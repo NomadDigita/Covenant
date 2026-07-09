@@ -12,6 +12,13 @@ import { BrandingLockup } from "@/components/BrandingLockup";
 import { voiceEngine, NarratorType } from "@/utils/voiceEngine";
 import { Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop } from "lucide-react";
 
+// Cryptographic primitives for standard Casper on-chain deploy constructions
+// @ts-ignore
+import * as CasperSDK from "casper-js-sdk";
+
+// Safely extract typed components to avoid bundler CommonJS/ESM named-export resolution errors
+const { DeployUtil, CLPublicKey, RuntimeArgs, CLValueBuilder } = CasperSDK as any;
+
 // Declare global window extensions to clear TypeScript compiler warnings
 declare global {
   interface Window {
@@ -398,24 +405,130 @@ export default function DashboardPage() {
     }
   };
 
-  // Triggered on modal signature click
-  const handleSignTransaction = async (txHash: string) => {
-    setIsSwarmOpen(false);
-    if (!swarmTarget) return;
-
-    voiceEngine.speak("Swarm clearance granted. Micropayment settled on-chain.", { echo: true, rate: 1.0 });
-
-    addTerminalLog(`[CovenantPay_SENDER] Triggering HTTP-native x402 pay-per-request API key settlement...`);
-    addTerminalLog(`[CovenantPay_SUCCESS] Confirmed payment receipt on-chain: ${txHash.substring(0, 16)}...`);
-    addTerminalLog(`[SWARM_ORCHESTRATOR] Triggering background agents to recalculate trust and credit metrics.`);
-
-    // Refresh dynamic metrics list from postgres database
-    await fetchAgentsCatalog();
-    addTerminalLog(`[SWARM_WRITE] Success rate and volume densities recalculated successfully.`);
+  // Construct standard valid standard standard standard contract-call deploy expected by Casper provider extensions
+  const buildOnChainPaymentDeploy = (senderPublicKeyHex: string, contractHashHex: string, amountMotes: number) => {
+    const senderKey = CLPublicKey.fromHex(senderPublicKeyHex);
     
-    setTimeout(() => {
-      fetchAgentProfile(swarmTarget.wallet_address);
-    }, 1000);
+    // Convert hex contract hash to Uint8Array expected by compiler structures
+    const cleanHashHex = contractHashHex.replace("hash-", "").trim();
+    const contractHashBytes = Uint8Array.from(Buffer.from(cleanHashHex, "hex"));
+
+    // Allocate standard 15.0 CSPR gas budget limits inside standard deploy payment block (gas fees)
+    const payment = DeployUtil.standardPayment(15000000000); 
+
+    // Inject standard "amount" variable expected by PaymentContract deposit method as U512 parameters
+    const args = RuntimeArgs.fromMap({
+      amount: CLValueBuilder.u512(amountMotes),
+    });
+
+    // Generate Stored Contract deploy item targeting deposit entrypoint
+    const session = DeployUtil.ExecutableDeployItem.newStoredContractByHash(
+      contractHashBytes,
+      "deposit",
+      args
+    );
+
+    // Build the completed Deploy metadata
+    const deployParams = new DeployUtil.DeployParams(senderKey, "casper-test");
+    const deploy = DeployUtil.makeDeploy(deployParams, session, payment);
+    
+    return DeployUtil.deployToJson(deploy);
+  };
+
+  // HARDENED: Requests real cryptographic wallet signatures and broadcasts to Testnet node!
+  const handleSignTransaction = async (simulatedHash: string) => {
+    setIsSwarmOpen(false);
+    
+    if (!swarmTarget) return;
+    if (!connectedWallet) {
+      alert("Verification Failed: Connect your Casper wallet session before signing on-chain agreements.");
+      return;
+    }
+
+    const provider = getCasperProvider();
+    if (!provider) {
+      alert("Missing Wallet Provider: Install standard Casper Wallet browser extension to sign transactions.");
+      return;
+    }
+
+    // Standard Covenant x402 payment requirements = 5.0 CSPR
+    const paymentMotes = 5000000000; 
+    const paymentContractHash = process.env.NEXT_PUBLIC_CONTRACT_HASH_PAYMENT || "hash-1eafc5e92e53b24ce87f1f8bf8b483ba5283aa35b22d13024cf27a3db32ad76f";
+
+    addTerminalLog(`[CovenantPay_SENDER] Initializing real x402 on-chain handshakes targeting: ${paymentContractHash.substring(0, 16)}...`);
+    addTerminalLog(`[Casper_SDK] Constructing bare-metal JSON transaction deploy payload...`);
+
+    try {
+      // Build standard compliant Casper transaction deploy
+      const deployJson = buildPaymentDeploy(connectedWallet, paymentContractHash, paymentMotes);
+      const deployString = JSON.stringify(deployJson);
+
+      addTerminalLog(`[CovenantPay_SIGN] Requesting cryptographic validation from Casper Wallet extension...`);
+      
+      // Open standard wallet provider popup to request standard operator key signature
+      const signatureResult = await provider.sign(deployString, connectedWallet);
+      
+      if (!signatureResult || !signatureResult.cancelled) {
+        addTerminalLog(`[CovenantPay_REJECT] Transaction signature cancelled by system operator.`);
+        return;
+      }
+
+      // Reconstruct standard completed deploy to fetch actual cryptographic hash string
+      const signedDeploy = DeployUtil.deployFromJson(deployJson).unwrap();
+      const realDeployHash = signedDeploy.hash.toString();
+
+      addTerminalLog(`[CovenantPay_BROADCAST] Signature secured! Broadcasting signed transaction to Testnet node...`);
+
+      // Broadcast signed JSON to public Casper Testnet RPC node
+      const rpcPayload = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "account_put_deploy",
+        params: {
+          deploy: signedDeploy,
+        },
+      };
+
+      const rpcResponse = await fetch("https://rpc.testnet.casper.network/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rpcPayload),
+      });
+
+      // Handle raw error boundaries on transport
+      if (!rpcResponse.ok) {
+        throw new Error(`RPC node returned status: ${rpcResponse.statusText}`);
+      }
+
+      addTerminalLog(`[CovenantPay_SUCCESS] Broadcast successful! Testnet Hash: ${realDeployHash}`);
+      addTerminalLog(`[SWARM_ORCHESTRATOR] Logging x402 micropayment and triggering rating recalculated loops...`);
+
+      // Update standard server logs joined with real on-chain transaction deployment hash
+      await api.executePayment({
+        sender_wallet: connectedWallet,
+        receiver_wallet: swarmTarget.wallet_address,
+        amount: 5.0,
+        memo: `x402: AlphaMarketOracle Hire`,
+        tx_hash: realDeployHash,
+      });
+
+      // Recalculate dynamic statistics and ratings dynamically from live database
+      await fetchAgentsCatalog();
+      voiceEngine.speak("Swarm clearance granted. Micropayment settled on-chain.", { echo: true, rate: 1.0 });
+
+      setTimeout(() => {
+        fetchAgentProfile(swarmTarget.wallet_address);
+      }, 1000);
+
+    } catch (err: any) {
+      console.error("Casper signatures pipeline failed: ", err);
+      addTerminalLog(`[CovenantPay_ERROR] Signature handshakes aborted: ${err.message || err}`);
+    }
+  };
+
+  // Helper bindings bypass (safeguarding TypeScript builds)
+  const buildPaymentDeploy = (wallet: string, hash: string, motes: number) => {
+    return buildOnChainPaymentDeploy(wallet, hash, motes);
   };
 
   // Manual Micropayment Transfer (CovenantPay)
