@@ -211,6 +211,14 @@
     });
 
     // Handle Safe Browser-Signed Deployment
+    const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    }[char]));
+
     deployForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       statusOutput.innerHTML = "";
@@ -279,10 +287,11 @@
           </div>
         `;
       } catch (err) {
+        const safeErrorMessage = escapeHtml(err?.message || "Unknown error");
         statusOutput.innerHTML = `
           <div class="alert alert-danger">
             <strong>❌ Deployment Failed:</strong><br>
-            ${err.message}
+            ${safeErrorMessage}
           </div>
         `;
       } finally {
