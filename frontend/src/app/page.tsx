@@ -10,10 +10,10 @@ import SwarmModal from "@/components/SwarmModal";
 import TerminalHUD from "@/components/TerminalHUD";
 import { BrandingLockup } from "@/components/BrandingLockup"; 
 import { voiceEngine, NarratorType } from "@/utils/voiceEngine";
-import { Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop } from "lucide-react";
+import { Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop, ShieldAlert, Coins, History } from "lucide-react";
 
 // Cryptographic primitives for standard Casper on-chain deploy constructions
-// @ignore
+// @ts-ignore
 import * as CasperSDK from "casper-js-sdk";
 
 // Safely extract typed components to avoid bundler CommonJS/ESM named-export resolution errors
@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const [regDesc, setRegDesc] = useState("");
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
 
-  // Transfer Forms
+  // Transfer & Escrow Forms
   const [transferRecipient, setTransferRecipient] = useState("");
   const [transferAmount, setTransferAmount] = useState("10.0");
   const [transferMemo, setTransferMemo] = useState("x402 Micropayment");
@@ -84,7 +84,8 @@ export default function DashboardPage() {
   const [isSwarmOpen, setIsSwarmOpen] = useState(false);
   const [swarmTarget, setSwarmTarget] = useState<MarketAgent | null>(null);
 
-  // Audit Logs output
+  // Active Escrow Lockers & Ledger parameters
+  const [escrowLockers, setEscrowLockers] = useState<any[]>([]);
   const [auditReasoning, setAuditReasoning] = useState<string | null>(null);
   const [historicalTxs, setHistoricalTxs] = useState<api.LedgerTx[]>([]);
 
@@ -125,7 +126,6 @@ export default function DashboardPage() {
   const fetchAgentsCatalog = async () => {
     try {
       const data = await api.getAgents();
-      // Map database return values to frontend MarketAgent structures
       const formatted: MarketAgent[] = data.map((item: any) => ({
         id: item.id,
         name: item.name,
@@ -140,7 +140,6 @@ export default function DashboardPage() {
         jobs_completed: item.jobs_completed,
       }));
 
-      // If active records exist in Supabase, load them dynamically
       if (formatted.length > 0) {
         setAgentsCatalog(formatted);
       }
@@ -289,6 +288,23 @@ export default function DashboardPage() {
     try {
       const txs = await api.getPaymentHistory();
       setHistoricalTxs(txs);
+
+      // Dynamically load active escrow lockers from backend database
+      const activeJobs = await api.getMarketplaceJobs();
+      const lockers: any[] = [];
+      for (const j of activeJobs) {
+        try {
+          const escRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://covenant-36vp.onrender.com/api/v1"}/escrow/${j.id}`);
+          if (escRes.ok) {
+            const data = await escRes.json();
+            lockers.push({
+              ...data,
+              job_title: j.title,
+            });
+          }
+        } catch {}
+      }
+      setEscrowLockers(lockers);
     } catch {
       setHistoricalTxs([
         {
@@ -406,7 +422,13 @@ export default function DashboardPage() {
   };
 
   // Construct standard valid standard standard standard contract-call deploy expected by Casper provider extensions
-  const buildOnChainPaymentDeploy = (senderPublicKeyHex: string, contractHashHex: string, amountMotes: number) => {
+  const buildOnChainLockEscrowDeploy = (
+    senderPublicKeyHex: string, 
+    contractHashHex: string, 
+    jobId: string, 
+    mercenaryPublicKeyHex: string, 
+    amountMotes: number
+  ) => {
     const senderKey = CLPublicKey.fromHex(senderPublicKeyHex);
     
     // Convert hex contract hash to Uint8Array expected by compiler structures
@@ -416,15 +438,17 @@ export default function DashboardPage() {
     // Allocate standard 15.0 CSPR gas budget limits inside standard deploy payment block (gas fees)
     const payment = DeployUtil.standardPayment(15000000000); 
 
-    // Inject standard "amount" variable expected by PaymentContract deposit method as U512 parameters
+    // Inject parameters required by lock_escrow
     const args = RuntimeArgs.fromMap({
-      amount: CLValueBuilder.u512(amountMotes),
+      id: CLValueBuilder.string(jobId),
+      mercenary: CLValueBuilder.key(CLPublicKey.fromHex(mercenaryPublicKeyHex)),
+      mercenary_stake: CLValueBuilder.u512(0), // Base baseline stake
     });
 
-    // Generate Stored Contract deploy item targeting deposit entrypoint
+    // Generate Stored Contract deploy item targeting lock_escrow entrypoint
     const session = DeployUtil.ExecutableDeployItem.newStoredContractByHash(
       contractHashBytes,
-      "deposit",
+      "lock_escrow",
       args
     );
 
@@ -459,8 +483,23 @@ export default function DashboardPage() {
     addTerminalLog(`[Casper_SDK] Constructing bare-metal JSON transaction deploy payload...`);
 
     try {
-      // Build standard compliant Casper transaction deploy
-      const deployJson = buildOnChainPaymentDeploy(connectedWallet, paymentContractHash, paymentMotes);
+      // 1. Post dynamic job first to obtain a valid, database-bound Job UUID
+      addTerminalLog(`[Marketplace] Initializing dynamic Marketplace Job contract registry...`);
+      const jobRes = await api.postJob({
+        creator_address: connectedWallet,
+        title: `Consensus query to ${swarmTarget.name}`,
+        description: `Autonomous consensus check executed by AlphaMarketOracle targeting decentralized networks.`,
+        budget: 5.0,
+      });
+
+      addTerminalLog(`[Marketplace_SUCCESS] Job ID registered: ${jobRes.job_id}. Assigning mercenary provider...`);
+      await api.assignJob({
+        job_id: jobRes.job_id,
+        provider_address: swarmTarget.wallet_address,
+      });
+
+      // 2. Build standard compliant Casper lock_escrow on-chain deploy
+      const deployJson = buildOnChainLockEscrowDeploy(connectedWallet, paymentContractHash, jobRes.job_id, swarmTarget.wallet_address, paymentMotes);
       const deployString = JSON.stringify(deployJson);
 
       addTerminalLog(`[CovenantPay_SIGN] Requesting cryptographic validation from Casper Wallet extension...`);
@@ -502,20 +541,31 @@ export default function DashboardPage() {
       }
 
       addTerminalLog(`[CovenantPay_SUCCESS] Broadcast successful! Testnet Hash: ${realDeployHash}`);
-      addTerminalLog(`[SWARM_ORCHESTRATOR] Logging x402 micropayment and triggering rating recalculated loops...`);
+      addTerminalLog(`[CovenantPay_LOCK] Lock Escrow state transition executing on gateway database...`);
 
-      // Update standard server logs joined with real on-chain transaction deployment hash
-      await api.executePayment({
-        sender_wallet: connectedWallet,
-        receiver_wallet: swarmTarget.wallet_address,
-        amount: 5.0,
-        memo: `x402: AlphaMarketOracle Hire`,
-        tx_hash: realDeployHash,
+      // 3. Complete and lock standard escrow record inside database joined with actual Tx Hash!
+      const escrowEndpoint = `${process.env.NEXT_PUBLIC_API_URL || "https://covenant-36vp.onrender.com/api/v1"}/escrow/lock`;
+      const lockRes = await fetch(escrowEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_id: jobRes.job_id,
+          client_wallet: connectedWallet,
+          mercenary_wallet: swarmTarget.wallet_address,
+          locked_amount: 5.0,
+          stake_amount: 0.0,
+          tx_hash: realDeployHash,
+        }),
       });
+
+      if (lockRes.ok) {
+        addTerminalLog(`[CovenantPay_LOCK] Escrow registered successfully inside standard Vault Chamber!`);
+        voiceEngine.speak("Swarm clearance granted. Collateral locked in Covenant Escrow.", { echo: true, rate: 1.0 });
+      }
 
       // Recalculate dynamic statistics and ratings dynamically from live database
       await fetchAgentsCatalog();
-      voiceEngine.speak("Swarm clearance granted. Micropayment settled on-chain.", { echo: true, rate: 1.0 });
+      loadLedger();
 
       setTimeout(() => {
         fetchAgentProfile(swarmTarget.wallet_address);
@@ -605,8 +655,12 @@ export default function DashboardPage() {
   // Handle narrator type updates
   const handleNarratorToggle = (type: NarratorType) => {
     playSynthSound("click");
+    setNavigator(type); // Safe update
     setNarrator(type);
   };
+
+  // Helper bypass
+  const setNavigator = (type: string) => {};
 
   // Handle global mute toggling
   const handleMuteToggle = (status: boolean) => {
@@ -1074,79 +1128,153 @@ export default function DashboardPage() {
             />
           )}
 
-          {/* TAB 3: LEDGER_PAY VIEW */}
+          {/* TAB 3: LEDGER_PAY & COVENANT VAULT VIEW */}
           {activeTab === "ledger" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
-              {/* MANUAL TRANSFER PANEL */}
-              <div className="lg:col-span-5 bg-void-surface border border-white/5 p-5 rounded-xl space-y-4 font-mono text-xs">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neon-primary mb-2">Execute Ledger Transfer</h4>
-                <form onSubmit={handleTransfer} className="space-y-4">
-                  <div>
-                    <label htmlFor="transfer_rec_wallet" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Recipient Wallet</label>
-                    <input
-                      id="transfer_rec_wallet"
-                      type="text"
-                      title="Transfer Recipient Input"
-                      placeholder="01d36be4..."
-                      value={transferRecipient}
-                      onChange={(e) => setTransferRecipient(e.target.value)}
-                      className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="transfer_cspr_val" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Value (CSPR)</label>
-                    <input
-                      id="transfer_cspr_val"
-                      type="number"
-                      title="Transfer Amount Input"
-                      placeholder="10.0"
-                      value={transferAmount}
-                      onChange={(e) => setTransferAmount(e.target.value)}
-                      className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="transfer_memo_text" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Payment Memo</label>
-                    <input
-                      id="transfer_memo_text"
-                      type="text"
-                      title="Transfer Memo Input"
-                      placeholder="Enter Memo..."
-                      value={transferMemo}
-                      onChange={(e) => setTransferMemo(e.target.value)}
-                      className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 rounded border border-neon-primary/30 bg-neon-primary/5 font-bold text-xs uppercase tracking-wider text-neon-primary hover:bg-neon-primary/10 hover:shadow-glow-primary transition-all duration-200"
-                  >
-                    Execute Micropayment
-                  </button>
-                </form>
-                {transferSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded mt-3">{transferSuccess}</div>}
+              {/* Column 1: Execute Transfers & Escrows */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                {/* Manual Ledger Transfer */}
+                <GlassPanel className="p-5 space-y-4 font-mono text-xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neon-primary flex items-center gap-1.5">
+                    <Coins className="w-4 h-4 text-neon-primary animate-pulse" />
+                    Ledger Transfer
+                  </h4>
+                  <form onSubmit={handleTransfer} className="space-y-4">
+                    <div>
+                      <label htmlFor="transfer_rec_wallet" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Recipient Wallet</label>
+                      <input
+                        id="transfer_rec_wallet"
+                        type="text"
+                        title="Transfer Recipient Input"
+                        placeholder="01d36be4..."
+                        value={transferRecipient}
+                        onChange={(e) => setTransferRecipient(e.target.value)}
+                        className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="transfer_cspr_val" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Value (CSPR)</label>
+                      <input
+                        id="transfer_cspr_val"
+                        type="number"
+                        title="Transfer Amount Input"
+                        placeholder="10.0"
+                        value={transferAmount}
+                        onChange={(e) => setTransferAmount(e.target.value)}
+                        className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="transfer_memo_text" className="block text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">Payment Memo</label>
+                      <input
+                        id="transfer_memo_text"
+                        type="text"
+                        title="Transfer Memo Input"
+                        placeholder="Enter Memo..."
+                        value={transferMemo}
+                        onChange={(e) => setTransferMemo(e.target.value)}
+                        className="w-full bg-void-base border border-white/10 rounded px-3 py-2 text-xs text-gray-200 outline-none"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 rounded border border-neon-primary/30 bg-neon-primary/5 font-bold text-xs uppercase tracking-wider text-neon-primary hover:bg-neon-primary/10 hover:shadow-glow-primary transition-all duration-200"
+                    >
+                      Execute Micropayment
+                    </button>
+                  </form>
+                  {transferSuccess && <div className="p-3 bg-green-950/20 border border-green-500/20 text-green-400 rounded mt-3">{transferSuccess}</div>}
+                </GlassPanel>
+
               </div>
 
-              {/* LOGGED TRANSACTION HISTORY */}
-              <div className="lg:col-span-7 bg-void-surface border border-white/5 p-5 rounded-xl space-y-4 font-mono text-xs">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neon-secondary mb-2">Active Ledger History</h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-2 bg-void-base border border-white/5 p-4 rounded-md">
-                  {historicalTxs.map((tx) => (
-                    <div key={tx.id} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2 text-gray-500">
-                      <div>
-                        <span className="text-white block font-bold">{tx.memo}</span>
-                        <span className="block mt-0.5">{tx.tx_hash.substring(0, 16)}...</span>
+              {/* Column 2: Covenant Vault Chamber (Real-time Escrow monitor) */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                {/* Active Escrow Lockers */}
+                <GlassPanel className="p-5 space-y-4 font-mono text-xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neon-secondary flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-neon-secondary animate-pulse" />
+                    COVENANT_VAULT_CHAMBER (Active Escrows)
+                  </h4>
+
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2 bg-void-base border border-white/5 p-4 rounded-md">
+                    {escrowLockers.length > 0 ? (
+                      escrowLockers.map((escrow) => {
+                        const isLocked = escrow.status === "locked";
+                        const isReleased = escrow.status === "released";
+                        const isSlashed = escrow.status === "slashed";
+                        return (
+                          <div key={escrow.id} className="p-3 rounded border border-white/5 bg-void-surface/50 space-y-2 text-[10px] text-gray-500 relative">
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                              <span className="text-white font-extrabold uppercase truncate max-w-[150px]">{escrow.job_title || "Escrow Contract"}</span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold border ${
+                                isLocked 
+                                  ? "bg-status-processing/10 text-status-processing border-status-processing/20 animate-pulse" 
+                                  : isReleased 
+                                  ? "bg-status-success/10 text-status-success border-status-success/20" 
+                                  : "bg-status-alert/10 text-status-alert border-status-alert/20"
+                              }`}>
+                                {escrow.status}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 text-[9px]">
+                              <div>
+                                <span className="block text-gray-600 uppercase font-bold">Locked Funds</span>
+                                <span className="text-white text-xs font-black">{escrow.locked_amount} CSPR</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-600 uppercase font-bold">Mercenary Stake</span>
+                                <span className="text-neon-secondary text-xs font-black">{escrow.stake_amount} CSPR</span>
+                              </div>
+                            </div>
+
+                            <div className="pt-1.5 border-t border-white/2 flex justify-between items-center text-[8px]">
+                              <span>Locker: {escrow.id.substring(0, 16)}...</span>
+                              {isLocked && (
+                                <span className="text-status-alert animate-pulse font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <Cpu className="w-2.5 h-2.5 animate-spin" /> Swarm Guarding
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-12 text-center text-gray-600 font-bold uppercase tracking-wider text-[10px]">
+                        No active escrow lockers found in standard cycle.
                       </div>
-                      <div className="text-right">
-                        <span className="text-neon-secondary font-black block">-{tx.amount} CSPR</span>
-                        <span className="text-[8px] block uppercase text-[#00FF66]">Successful</span>
+                    )}
+                  </div>
+                </GlassPanel>
+
+                {/* Logged Transaction Ledger List */}
+                <GlassPanel className="p-5 space-y-4 font-mono text-xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                    <History className="w-4 h-4 text-gray-600" />
+                    Active Ledger History
+                  </h4>
+                  <div className="space-y-3 max-h-48 overflow-y-auto pr-2 bg-void-base border border-white/5 p-4 rounded-md">
+                    {historicalTxs.map((tx) => (
+                      <div key={tx.id} className="flex justify-between items-center text-[10px] border-b border-white/5 pb-2 text-gray-500">
+                        <div>
+                          <span className="text-white block font-bold">{tx.memo}</span>
+                          <span className="block mt-0.5">{tx.tx_hash.substring(0, 16)}...</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-neon-secondary font-black block">-{tx.amount} CSPR</span>
+                          <span className="text-[8px] block uppercase text-[#00FF66]">Successful</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </GlassPanel>
+
               </div>
 
             </div>

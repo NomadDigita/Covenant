@@ -6,7 +6,7 @@ use odra::prelude::vec;       // Required for macro vec resolution
 use odra::prelude::BTreeSet;  // Required for #[odra::module] macros
 use odra::module::Module;     // Import the Module trait to enable self.env()
 use odra::casper_types::U512; // Casper-native big integer type for payments
-use odra::{Address, Mapping, Var, UnwrapOrRevert};
+use odra::{Address, Mapping, UnwrapOrRevert};
 
 // ─── ON-CHAIN EVENT SCHEMAS ─────────────────────────────────────────────────
 
@@ -56,6 +56,29 @@ pub struct GovernorRevoked {
     pub revoked_governor: Address,
 }
 
+#[derive(odra::Event, PartialEq, Eq, Debug)]
+pub struct EscrowLocked {
+    pub id: String,
+    pub client: Address,
+    pub mercenary: Address,
+    pub locked_funds: U512,
+    pub mercenary_stake: U512,
+}
+
+#[derive(odra::Event, PartialEq, Eq, Debug)]
+pub struct EscrowReleased {
+    pub id: String,
+    pub mercenary: Address,
+    pub amount: U512,
+}
+
+#[derive(odra::Event, PartialEq, Eq, Debug)]
+pub struct EscrowSlashed {
+    pub id: String,
+    pub client: Address,
+    pub refund_amount: U512,
+}
+
 // ─── DATA STRUCTURES ─────────────────────────────────────────────────────────
 
 #[derive(odra::OdraType)]
@@ -74,6 +97,16 @@ pub struct Job {
     pub budget: u64,
     pub is_active: bool,
     pub is_completed: bool,
+}
+
+#[derive(odra::OdraType)]
+pub struct EscrowDetail {
+    pub client: Address,
+    pub mercenary: Address,
+    pub locked_funds: U512,
+    pub mercenary_stake: U512,
+    pub released: bool,
+    pub terminated: bool,
 }
 
 // ─── COVENANT ID: AGENT REGISTRY CONTRACT ────────────────────────────────────
@@ -264,12 +297,36 @@ impl CreditContract {
 #[odra::module]
 pub struct PaymentContract {
     balances: Mapping<Address, U512>,
+    governors: Mapping<Address, bool>,
+    escrows: Mapping<String, EscrowDetail>,
 }
 
 #[odra::module]
 impl PaymentContract {
     #[odra(init)]
-    pub fn init(&mut self) {}
+    pub fn init(&mut self) {
+        let caller = self.env().caller();
+        self.governors.set(&caller, true);
+    }
+
+    pub fn is_governor(&self, address: Address) -> bool {
+        self.governors.get(&address).unwrap_or(false)
+    }
+
+    pub fn grant_governor_payment(&mut self, new_governor: Address) {
+        let caller = self.env().caller();
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Only existing Governors can grant governance roles.");
+        self.governors.set(&new_governor, true);
+    }
+
+    pub fn revoke_governor_payment(&mut self, target_governor: Address) {
+        let caller = self.env().caller();
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Only existing Governors can revoke governance roles.");
+        assert_ne!(caller, target_governor, "Self-revocation prohibited.");
+        self.governors.set(&target_governor, false);
+    }
 
     /// Deposit CSPR into the contract balance sheet for the caller.
     pub fn deposit(&mut self) {
@@ -277,6 +334,89 @@ impl PaymentContract {
         let amount = self.env().attached_value();
         let current_balance = self.balances.get(&caller).unwrap_or(U512::zero());
         self.balances.set(&caller, current_balance + amount);
+    }
+
+    /// Lock escrow collateral and dynamic mercenary stake internally
+    pub fn lock_escrow(&mut self, id: String, mercenary: Address, mercenary_stake: U512) {
+        let client = self.env().caller();
+        let locked_funds = self.env().attached_value();
+
+        assert!(locked_funds > U512::zero(), "Escrow configuration failed: locked funds must be greater than zero.");
+        assert!(self.escrows.get(&id).is_none(), "Escrow configuration failed: escrow ID already active.");
+
+        // If a mercenary stake is required, verify and lock standard funds from their internal balance sheet
+        if mercenary_stake > U512::zero() {
+            let mercenary_bal = self.balances.get(&mercenary).unwrap_or(U512::zero());
+            assert!(mercenary_bal >= mercenary_stake, "Escrow configuration failed: mercenary has insufficient internal balance for collateral stake.");
+            self.balances.set(&mercenary, mercenary_bal - mercenary_stake);
+        }
+
+        let detail = EscrowDetail {
+            client,
+            mercenary,
+            locked_funds,
+            mercenary_stake,
+            released: false,
+            terminated: false,
+        };
+
+        self.escrows.set(&id, detail);
+
+        self.env().emit_event(EscrowLocked {
+            id,
+            client,
+            mercenary,
+            locked_funds,
+            mercenary_stake,
+        });
+    }
+
+    /// Release locked escrow (both standard client funds and mercenary stake) to standard mercenary's balance
+    pub fn release_escrow(&mut self, id: String) {
+        let caller = self.env().caller();
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Release authorization rejected: caller is not an authorized Governor.");
+
+        let mut detail = self.escrows.get(&id).unwrap_or_revert(&self.env());
+        assert!(!detail.released && !detail.terminated, "Release authorization rejected: escrow is already finalized.");
+
+        detail.released = true;
+        self.escrows.set(&id, detail.clone());
+
+        // Credit total reserves (budget + stake) directly into the mercenary's balance sheet
+        let total_payout = detail.locked_funds + detail.mercenary_stake;
+        let mercenary_bal = self.balances.get(&detail.mercenary).unwrap_or(U512::zero());
+        self.balances.set(&detail.mercenary, mercenary_bal + total_payout);
+
+        self.env().emit_event(EscrowReleased {
+            id,
+            mercenary: detail.mercenary,
+            amount: total_payout,
+        });
+    }
+
+    /// Refund standard client and slash standard mercenary's stake on failure (liquidated damages)
+    pub fn slash_escrow(&mut self, id: String) {
+        let caller = self.env().caller();
+        let is_auth = self.governors.get(&caller).unwrap_or(false);
+        assert!(is_auth, "Slasher authorization rejected: caller is not an authorized Governor.");
+
+        let mut detail = self.escrows.get(&id).unwrap_or_revert(&self.env());
+        assert!(!detail.released && !detail.terminated, "Slasher authorization rejected: escrow is already finalized.");
+
+        detail.terminated = true;
+        self.escrows.set(&id, detail.clone());
+
+        // Refund client's locked budget and credit standard slashed mercenary stake directly to standard client
+        let total_refund = detail.locked_funds + detail.mercenary_stake;
+        let client_bal = self.balances.get(&detail.client).unwrap_or(U512::zero());
+        self.balances.set(&detail.client, client_bal + total_refund);
+
+        self.env().emit_event(EscrowSlashed {
+            id,
+            client: detail.client,
+            refund_amount: total_refund,
+        });
     }
 
     /// Transfer balance between two internal accounts.
