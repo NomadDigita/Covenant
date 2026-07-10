@@ -129,3 +129,17 @@ type AuditLog struct {
 	Justification       string    `gorm:"type:varchar(2000);not null" json:"justification"` // Bounded to protect storage
 	CreatedAt           time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 }
+
+// EscrowLocker represents locked transaction collateral and stake amounts (CovenantEscrow)
+type EscrowLocker struct {
+	ID           string         `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	JobID        string         `gorm:"type:uuid;not null;index" json:"job_id"`
+	Job          MarketplaceJob `gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE" json:"-"`
+	ClientWallet string         `gorm:"type:varchar(70);not null" json:"client_wallet"`
+	AgentWallet  string         `gorm:"type:varchar(70);not null" json:"agent_wallet"`
+	LockedAmount float64        `gorm:"type:numeric(20,9);not null;check:locked_amount >= 0.0" json:"locked_amount"`
+	StakeAmount  float64        `gorm:"type:numeric(20,9);not null;check:stake_amount >= 0.0" json:"stake_amount"`
+	Status       string         `gorm:"type:varchar(30);default:'locked';check:status IN ('locked', 'released', 'slashed', 'refunded')" json:"status"`
+	ExpiresAt    time.Time      `json:"expires_at"`
+	CreatedAt    time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
+}
