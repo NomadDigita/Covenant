@@ -13,7 +13,7 @@ import { voiceEngine, NarratorType } from "@/utils/voiceEngine";
 import { Menu, X, Cpu, Volume2, VolumeX, Moon, Sun, Laptop } from "lucide-react";
 
 // Cryptographic primitives for standard Casper on-chain deploy constructions
-// @ts-ignore
+// @ignore
 import * as CasperSDK from "casper-js-sdk";
 
 // Safely extract typed components to avoid bundler CommonJS/ESM named-export resolution errors
@@ -827,25 +827,42 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-void-base flex relative">
       
-      {/* Dynamic heartbeat indicators and visual parameters overlay */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        connectedWallet={connectedWallet}
-        isConnecting={isWalletConnecting}
-        onConnect={handleConnectWallet}
-        onDisconnect={handleDisconnectWallet}
-      />
+      {/* FIXED COLLAPSIBLE WRAPPER: Handles standard sliding animations smoothly on mobile devices */}
+      <div className={`
+        fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 lg:relative lg:translate-x-0 shrink-0
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setIsSidebarOpen(false); // Cleanly auto-collapses drawer on mobile tap select
+          }}
+          connectedWallet={connectedWallet}
+          isConnecting={isWalletConnecting}
+          onConnect={handleConnectWallet}
+          onDisconnect={handleDisconnectWallet}
+        />
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Dimmed backdrop when sidebar drawer is active on mobile screens */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+        />
+      )}
+
+      {/* Main content area with padded boundary spacing on desktop */}
+      <div className="flex-1 flex flex-col min-h-screen pr-0 lg:pr-[320px] transition-all duration-300 w-full overflow-hidden">
         
         {/* Fixed Header */}
-        <header className="sticky top-0 z-40 backdrop-blur-xl bg-void-base/60 border-b border-white/5 py-4 px-6 sm:px-8 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-20 w-full border-b border-white/5 bg-void-base/80 backdrop-blur-md py-4 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-1.5 rounded border border-white/10 text-neon-secondary hover:text-white"
-              aria-label="Toggle Sidebar"
+              className="p-1.5 rounded border border-white/10 text-neon-secondary hover:text-white lg:hidden"
+              aria-label="Toggle Navigation Drawer"
             >
               {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
